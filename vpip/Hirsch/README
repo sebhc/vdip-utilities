@@ -1,0 +1,15 @@
+To build:
+
+c -k vpip3
+m80 =vpip3 /i
+
+c vinc32
+m80 =vinc32 /i
+
+c vutil32
+m80 =vutil32 /i
+
+m80 =pio
+
+l80 vpip3,vinc32,pio,vutil32,fprintf,stdlib/s,flibrary/s,dslib/s,syslib/s,clibrary,vpip/n/e
+

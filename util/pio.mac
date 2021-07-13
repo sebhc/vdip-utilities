@@ -1,0 +1,87 @@
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+; pio.mac
+;
+; These routines provide 'C'-callable functions to
+; perform input and output to a specified port.
+;
+; The calling interface here is designed for the
+; Software Toolworks C/80 3.0 compiler.  The C/80 calling
+; protocol is to push arguments (right-to-left) as
+; 16-bit quantities on the stack.  Value functions are
+; returned in the HL register.
+;
+; These routines are intended to be assembled with the
+; Microsoft Macro-80 assembler which creates a relocatable 
+; module that can be used as a stand alone (.REL) file or 
+; stored in a library (.LIB file) using the Microsoft 
+; LIB-80 Library Manager.  The Microsoft LINK-80 loader 
+; program is then used to link this code with the main 
+; (calling) program.
+;
+; This code is written using Z-80 instruction mnemonics
+; and makes user of Z-80 specific instructions.
+;
+; Usage is as follows:
+;
+;  int c, port;
+;
+;  outp(port,c);	/* output byte c to port  */
+;  c = inp(port);	/* input byte c from port */
+;
+; Release: September, 2017
+;
+; 	Glenn Roberts
+; 	glenn.f.roberts@gmail.com
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+;	Assemble for Z80 mnemonics
+	.Z80
+;
+;	Public routines defined in this module:
+;
+	PUBLIC	INP,OUTP
+;
+	CSEG
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+; outp - output a byte to a specified port number
+;
+;	C usage: outp(port,c)
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+OUTP:	POP	HL	; return address
+	POP	DE	; E = char to output
+	POP	BC	; C = port to use
+
+	PUSH	BC	; now fix the stack...
+	PUSH	DE
+	PUSH	HL
+	
+	OUT	(C),E	; output the byte
+
+	RET		; done!
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;
+; inp - input a byte from a specified port number
+;
+;	C usage: inp(port)
+;
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+INP:	POP	HL	; return address
+	POP	BC	; C = port to use
+
+	PUSH	BC	; now fix the stack...
+	PUSH	HL
+
+	IN	L,(C)	; read the byte
+	LD	H,0	; result in HL on return
+
+	RET
+
+; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+	END
