@@ -98,6 +98,7 @@
 #define	GETCS	0x0B
 #define GETSCB	0x31
 #define GETDT   0x69
+#define GETSDA	0x9a	/* MP/M System Data Area */
 
 /* Offsets in the SCB */
 #define	SOSEC	0x5C		/* seconds count in clock */
@@ -454,6 +455,7 @@ vhandshake()
 vinit()
 {
 	int rc;
+	int *tmp;
 
 	/* Set up a pointer to the one-second tick counter
 	** maintained by CP/M 3 in the System Control Block.
@@ -464,8 +466,13 @@ vinit()
 	scbs.set	= 0;		/* do a "get" not a "set" */
 	
     /* Find SCB address; add offset to seconds location */
-    secp = (char *)bdoshl(GETSCB, &scbs) + SOSEC;
-		
+    if ((bdoshl(12, 0) & 0x0100) != 0) { /* MP/M */
+	tmp = (int *)bdoshl(GETSDA, 0);
+	tmp = tmp[126]; /* offset 252: XDOS internal data */
+	secp = (char *)tmp + 4;
+    } else {	/* CP/M 3 */
+        secp = (char *)bdoshl(GETSCB, &scbs) + SOSEC;
+    }
 	rc = 0;
 	
 	/*first try to talk to the device */
