@@ -1,0 +1,3 @@
+build/
+*/*printf.h
+*/*.rel
