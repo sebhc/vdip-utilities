@@ -18,7 +18,7 @@
 **	- added switch to set port number
 **
 */
-#include "printf.h"
+#include "fprintf.h"
 
 #define FALSE	0
 #define TRUE	1
