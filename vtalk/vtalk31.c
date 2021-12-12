@@ -1,29 +1,43 @@
-/* vtalk - Version 3.1 for CP/M3 and HDOS w/ Rev 3.1 Z80 CPU
+/* vtalk - Version 3.1 for CP/M3 and HDOS
+**
+** USAGE: vtalk [-pxxx]
+**
+** xxx is optional octal base port (default is 0331)
+**
+** HDOS operation requires H-8-4 serial card.
 **
 ** This program implements a simple polling loop to send and
 ** receive characters to/from FTDI VDIP-1 connected
 ** via a  first-in-first-out (FIFO) hardware interface at
-** octal ports 261-262.  This utility lets you "talk" directly
+** octal ports 0331-0332.  This utility lets you "talk" directly
 ** to the VDIP-1 device and issue commands as described in
 ** the "Vinculum Firmware User Manual" available at
 ** www.ftdichip.com.  To exit type Ctrl-C.
 **
 ** Compiled with Software Toolworks C 3.0
 **
-** Version 1.3
-**
-** Glenn Roberts, 10 May 2013
-**
 **	Revised for CP/M 3 31 May 2019 - gfr
 **	- added switch to set port number
 **  Revised to accomodate all 3 OS versions - gfr
 **			- 18 October 2019
 **
+** 	External routines to resolve at link time:
+**		printf, inp, outp, aotoi
+**
+**	Suggested link statement:
+**		l80 vtalk31,printf,pio,vutil31,clibrary/s,vtalk/n/e
+**		
+**  Note: for HDOS this bypasses the OS and accesses the 8250
+**		UART directly. This makes it dependent on H-8-4 at
+**		standard console port 0350.
+**
+**	Initial GitHub release 17 July 2021
+**
 */
-#include "printf.h"
+#include "fprintf.h"
 
-/* Must define HDOS, CPM2 or CPM3 here to select the
-** appropriate compilation options.  Also: HDOS files
+/* define "HDOS" here to compile for HDOS, otherwise
+** compilation will assume CP/M.  HDOS files
 ** should be saved with unix style NL line endings;
 ** CP/M files require MS-DOS style CR-LF line endings.
 */
@@ -45,7 +59,6 @@ int p_data;		/* USB data port */
 int p_stat;		/* USB status port */
 
 /* *** CP/M specific code here *** */
-
 #ifndef HDOS
 /* copen - initialize console
 */
@@ -79,12 +92,10 @@ conin()
 	return bdos(6, 0xFF);
 }
 #endif
-
 /* *** end CP/M specific code *** */
 
 
 /* *** HDOS specific code here *** */
-
 #ifdef HDOS
 
 #define CONSOLE 0350	/* console serial port	*/
@@ -134,17 +145,6 @@ cclose()
 }
 #endif	
 /* *** end HDOS specific code *** */
-
-/* out_str - output a string directly to the specified serial port
-*/
-out_str(s)
-char *s;
-{
-	char *c;
-	
-	for (c=s; *c!=0; c++)
-		conout(*c);
-}
 
 /* out_vdip - send a character to the VDIP-1 via the
 ** specified port
@@ -212,17 +212,24 @@ char *argv[];
 	/* process any switches */
 	dosw(argc, argv);
 
+  /* print welcome */
 	printf("VTALK v3.1 - G. Roberts.  Using USB ports: %o,%o\n",
 			p_data, p_stat);
+	printf("Enter VDIP commands, Ctrl-C to exit\n\n");
 	
-	/* terminal emulation loop, ctl-C exits */
+	/* perform any console initialization */
+	copen();
+	
 	done = FALSE;
 	cr_pending = FALSE;
 	
-	/* intro banner */
-	out_str("Enter VDIP commands, Ctrl-C to exit\r\n\n");
-	
+	/* this loop repeatedly polls for input on the
+	** console, echos that to the VDIP, then polls
+	** the VDIP and echos that to the console. Ctrl-C
+	** on the console exits the loop.
+	*/
 	while(!done) {
+		
 		/* process console input, if any */
 		if ((c=conin()) != 0) {
 			/* control-C is escape character */
@@ -241,7 +248,7 @@ char *argv[];
 			}
 		}
 		
-		/* process VDIP input, if any.  the VDIP has a nasty
+		/* process VDIP input, if any.  the VDIP has an annoying
 		** habit of sending CR after every output, including
 		** the prompt.  here we supress that CR
 		*/
@@ -259,4 +266,7 @@ char *argv[];
 				conout(c);
 		}
 	}
+	
+	/* Ctrl-c has been hit. reset any console changes and exit */
+	cclose();
 }

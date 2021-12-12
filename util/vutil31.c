@@ -107,7 +107,7 @@
 ** should be saved with unix style NL line endings;
 ** CP/M files require MS-DOS style CR-LF line endings.
 */
-#define HDOS	1
+#define CPM3	1
 
 /* *** OS-independent definitions *** */
 
@@ -1304,10 +1304,14 @@ int len;
 		i++;
 	} while(n != 0);
 
-	/* left justify in the string */
+	/* left justify in the string
 	while (*p)
 		*s++ = *p++;
-	*s = NUL;
+	*s = NUL; */
+
+	/* pad the front with blanks */
+	while (p != s)
+		*--p = ' ';
 }
 
 /********************************************************

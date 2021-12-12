@@ -46,7 +46,7 @@
 ** should be saved with unix style NL line endings;
 ** CP/M files require MS-DOS style CR-LF line endings.
 */
-#define HDOS	1
+#define CPM3	1
 
 /* FTDI VDIP default ports */
 #define VDATA	0331
