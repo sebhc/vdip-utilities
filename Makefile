@@ -14,7 +14,7 @@ export CPMDrive_K = $(BLD)
 export CPMDrive_L = $(HOME)/git/MmsCpm3/3p/swtw-c80/math
 export CPMDrive_M = $(HOME)/git/MmsCpm3/3p/swtw-c80/src
 
-TARGETS = vtalk31.com vdir31.com vget31.com vput31.com
+TARGETS = vtalk31.com vdir31.com vget31.com vput31.com vpip31.com
 DEPS = $(CPMDrive_D)/vutil31.rel $(CPMDrive_D)/pio.rel
 
 all: $(BLD) $(addprefix $(BLD)/,$(TARGETS))
@@ -38,6 +38,9 @@ $(BLD)/vget31.com: fprintf.rel $(CPMDrive_G)/vget31.rel $(DEPS)
 $(BLD)/vput31.com: fprintf.rel command.rel $(CPMDrive_I)/vput31.rel $(DEPS)
 	vcpm link k:vput31=i:vput31,d:vutil31,d:pio,c:fprintf,c:command,a:flibrary'[s]',a:stdlib'[s]',a:clibrary'[s,oc,nr]'
 
+$(BLD)/vpip31.com: fprintf.rel $(CPMDrive_H)/vpip31.rel $(DEPS)
+	vcpm link k:vpip31=h:vpip31,d:vutil31,d:pio,c:fprintf,a:flibrary'[s]',a:stdlib'[s]',a:clibrary'[s,oc,nr]'
+
 $(CPMDrive_D)/%.rel: __FRC__
 	$(MAKE) -C $(CPMDrive_D) $*.rel
 
@@ -46,6 +49,9 @@ $(CPMDrive_F)/%.rel: __FRC__
 
 $(CPMDrive_G)/%.rel: __FRC__
 	$(MAKE) -C $(CPMDrive_G) $*.rel
+
+$(CPMDrive_H)/%.rel: __FRC__
+	$(MAKE) -C $(CPMDrive_H) $*.rel
 
 $(CPMDrive_I)/%.rel: __FRC__
 	$(MAKE) -C $(CPMDrive_I) $*.rel
