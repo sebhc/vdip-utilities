@@ -1,6 +1,7 @@
 ; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ;
-; pio.rmac - for use with RMAC and Z80.LIB
+; pio.rmac - for use with RMAC without Z80.LIB
+; Avoids naming conflicts for OUTP,INP in Z80.LIB
 ;
 ; These routines provide 'C'-callable functions to
 ; perform input and output to a specified port.
@@ -37,7 +38,6 @@
 ; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ;
 ;	Assemble for Z80 mnemonics
-	maclib	z80x
 ;
 ;	Public routines defined in this module:
 ;
@@ -60,7 +60,7 @@ OUTP:	POP	H	; return address
 	PUSH	D
 	PUSH	H
 	
-	OUTPT	E	; output the byte
+	DB 0EDH,59H	; OUT	(C),E	; output the byte
 
 	RET		; done!
 ;
@@ -77,7 +77,7 @@ INP:	POP	H	; return address
 	PUSH	B	; now fix the stack...
 	PUSH	H
 
-	INPT	L	; read the byte
+	DB 0EDH,68H	; IN	L,(C)	; read the byte
 	MVI	H,0	; result in HL on return
 
 	RET
