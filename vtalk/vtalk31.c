@@ -41,7 +41,6 @@
 ** should be saved with unix style NL line endings;
 ** CP/M files require MS-DOS style CR-LF line endings.
 */
-#define HDOS	1
 
 #define FALSE	0
 #define TRUE	1
