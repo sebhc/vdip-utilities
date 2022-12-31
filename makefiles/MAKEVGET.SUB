@@ -1,0 +1,10 @@
+era vutil.rel
+era vinc.rel
+era vget.rel
+c vutil
+m80 =vutil
+c vinc
+m80 =vinc
+c vget
+m80 =vget
+l80 vget,vutil,vinc,pio,b:fprintf,b:flibrary/s,b:stdlib/s,b:clibrary/s,vget/n/e

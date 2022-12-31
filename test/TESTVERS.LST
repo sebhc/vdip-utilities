@@ -1,0 +1,1356 @@
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 1
+
+    				;C/80 Compiler 3.1 (4/11/84) - (c) 1984 The Software Toolworks
+    				
+    				;/* test version calling */
+    				;#include "printf.c"
+    				;/* printf.c: library file for format, fformat, and printf;  5/23/84
+    				; * compile: c -l32000
+    				; * J. J. Gillogly, Apr 80
+    				; * sprintf added J. J. Gillogly, Jul 80
+    				; * Modified Jan 82 to work with #define kludge for multiple printf args
+    				; * %u and unsigned octal and hex added WB Feb 82
+    				; * long and floating descriptors added HT Apr 83
+    				; * Split for float/nonfloat and long/nonlong versions WB 5/25/83.
+    				; * Fix floating precision default, %3c, %% WB 11/15/83.
+    				; * Fix for unsigned chars WB 12/26/83.
+    				; * Fix for I/O redirection John Toscano 4/17/84.
+    				; */
+    				;#undef printf
+    				;#undef fprintf
+    				;#undef sprintf
+    				;static int *prnt_p,	/* Pointer into printf arglist */
+     08E5  00  00              	.d:	DW	0
+    				;	    Pfo;	/* Channel number for output */
+     08E7  00  00              	.e:	DW	0
+    				;static char *Pf,	/* current location in user's format */
+     08E9  00  00              	.f:	DW	0
+    				;	    *Pst;	/* current location in user's output string */
+     08EB  00  00              	.g:	DW	0
+    				;static int Width;	/* minimum field width */
+     08ED  00  00              	.h:	DW	0
+    				;static int Pr;		/* precision */
+     08EF  00  00              	.i:	DW	0
+    				;static int ch;		/* really char but int is more efficient */
+     08F1  00  00              	.j:	DW	0
+    				;static char Pad;
+     08F3  00                  	.k:	DB	0
+    				;static int ljust;	/* left-adjust flag */
+     08F4  00  00              	.l:	DW	0
+    				;static char *nbp,*nbpe; /* pointer to ascii converted number */
+     08F6  00  00              	.m:	DW	0
+     08F8  00  00              	.n:	DW	0
+    				;/* define functions to reduce entry points */
+    				;static Ps(),Pc(),getnum(),putsi(),putui(),putfld(),putpad(),hexdig();
+    				;static char *ocvti();
+    				;#define int_typ int
+    				;#define uns_typ unsigned
+    				;#define NBS 80
+    				;/* prnt_1 is used to mark the position of
+    				;   the printf argument list on the stack.
+    				;   Visually, the arguments, starting with the format string, will
+    				;   be stacked right below the marked position (prnt_p). The
+    				;   stacked arguments are values !!! (16- or 32-bits)
+    				;*/
+    				;prnt_1(firstarg) { prnt_p = &firstarg; }	/* Record arglist start */
+    				
+     08FA  21  02  00          	prnt_1:	LXI	H,2
+     08FD  39                  		DAD	SP
+     08FE  22  E5  08          		SHLD	.d
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 2
+
+     0901  C9                  		RET
+    				;prnt_2(lastarg) {
+    				;	format (*--prnt_p);			/* Process arglist */
+    				
+     0902  2A  E5  08          	prnt_2:	LHLD	.d
+     0905  2B                  		DCX	H
+     0906  2B                  		DCX	H
+     0907  22  E5  08          		SHLD	.d
+     090A  7E                  		MOV	A,M
+     090B  23                  		INX	H
+     090C  66                  		MOV	H,M
+     090D  6F                  		MOV	L,A
+     090E  E5                  		PUSH	H
+     090F  CD  7F  09          		CALL	format
+     0912  C1                  		POP	B
+    				;#asm
+    				;#asm
+     0913                      	@prnt@: DS	0
+    				;#endasm
+    				;/* now we are going to print the values. Instead of passing to printf
+    				;   the value to print (of unknown type), we pass the current pointer
+    				;   to the argument list. It is the responsibility of "printf" to
+    				;   retrieve the value physically located at prnt_p - 2 (if 16-bit) or
+    				;   prnt_p - 4 (if 32-bit). "printf" must also update prnt_p accordingly.
+    				;*/
+    				;	while (prnt_p > &lastarg) printf(prnt_p); }
+     0913  21  02  00          	.x:	LXI	H,2
+     0916  39                  		DAD	SP
+     0917  EB                  		XCHG
+     0918  2A  E5  08          		LHLD	.d
+     091B  CD  1A  08          		CALL	c.ult
+     091E  CA  2C  09          		JZ	.y
+     0921  2A  E5  08          		LHLD	.d
+     0924  E5                  		PUSH	H
+     0925  CD  46  0A          		CALL	printf
+     0928  C1                  		POP	B
+     0929  C3  13  09          		JMP	.x
+     092C  C9                  	.y:	RET
+    				;prnt_3(lastarg) {
+    				;	Pfo = *--prnt_p;	
+    				
+     092D  2A  E5  08          	prnt_3:	LHLD	.d
+     0930  2B                  		DCX	H
+     0931  2B                  		DCX	H
+     0932  22  E5  08          		SHLD	.d
+     0935  7E                  		MOV	A,M
+     0936  23                  		INX	H
+     0937  66                  		MOV	H,M
+     0938  6F                  		MOV	L,A
+     0939  22  E7  08          		SHLD	.e
+    				;	fformat(Pfo,*--prnt_p);
+     093C  2A  E7  08          		LHLD	.e
+     093F  E5                  		PUSH	H
+     0940  2A  E5  08          		LHLD	.d
+     0943  2B                  		DCX	H
+     0944  2B                  		DCX	H
+     0945  22  E5  08          		SHLD	.d
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 3
+
+     0948  7E                  		MOV	A,M
+     0949  23                  		INX	H
+     094A  66                  		MOV	H,M
+     094B  6F                  		MOV	L,A
+     094C  E5                  		PUSH	H
+     094D  CD  92  09          		CALL	fformat
+     0950  C1                  		POP	B
+     0951  C1                  		POP	B
+    				;#asm
+    				;#asm
+     0952  C3  13  09          		JMP	@prnt@
+    				;#endasm
+    				;/*	while (prnt_p > &lastarg) printf(prnt_p);	*/
+    				;}
+     0955  C9                  		RET
+    				;prnt_4(lastarg) {	
+    				;	Pst = *--prnt_p;
+    				
+     0956  2A  E5  08          	prnt_4:	LHLD	.d
+     0959  2B                  		DCX	H
+     095A  2B                  		DCX	H
+     095B  22  E5  08          		SHLD	.d
+     095E  7E                  		MOV	A,M
+     095F  23                  		INX	H
+     0960  66                  		MOV	H,M
+     0961  6F                  		MOV	L,A
+     0962  22  EB  08          		SHLD	.g
+    				;	sformat(Pst,*--prnt_p);
+     0965  2A  EB  08          		LHLD	.g
+     0968  E5                  		PUSH	H
+     0969  2A  E5  08          		LHLD	.d
+     096C  2B                  		DCX	H
+     096D  2B                  		DCX	H
+     096E  22  E5  08          		SHLD	.d
+     0971  7E                  		MOV	A,M
+     0972  23                  		INX	H
+     0973  66                  		MOV	H,M
+     0974  6F                  		MOV	L,A
+     0975  E5                  		PUSH	H
+     0976  CD  AC  09          		CALL	sformat
+     0979  C1                  		POP	B
+     097A  C1                  		POP	B
+    				;#asm
+    				;#asm
+     097B  C3  13  09          		JMP	@prnt@
+    				;#endasm
+    				;/*	while (prnt_p > &lastarg) printf(prnt_p);	*/
+    				;}
+     097E  C9                  		RET
+    				;format(form)
+    				;char *form;
+    				;{	extern fout;
+    				;	fformat(fout,form);
+    				
+     097F  2A  0B  02          	format:	LHLD	fout
+     0982  E5                  		PUSH	H
+     0983  21  04  00          		LXI	H,4
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 4
+
+     0986  39                  		DAD	SP
+     0987  7E                  		MOV	A,M
+     0988  23                  		INX	H
+     0989  66                  		MOV	H,M
+     098A  6F                  		MOV	L,A
+     098B  E5                  		PUSH	H
+     098C  CD  92  09          		CALL	fformat
+     098F  C1                  		POP	B
+     0990  C1                  		POP	B
+    				;}
+     0991  C9                  		RET
+    				;fformat(chan,form)
+    				;char *form;
+    				;{	Pfo = chan;
+    				
+     0992  21  04  00          	fformat:	LXI	H,4
+     0995  39                  		DAD	SP
+     0996  7E                  		MOV	A,M
+     0997  23                  		INX	H
+     0998  66                  		MOV	H,M
+     0999  6F                  		MOV	L,A
+     099A  22  E7  08          		SHLD	.e
+    				;	Pf = form;
+     099D  21  02  00          		LXI	H,2
+     09A0  39                  		DAD	SP
+     09A1  7E                  		MOV	A,M
+     09A2  23                  		INX	H
+     09A3  66                  		MOV	H,M
+     09A4  6F                  		MOV	L,A
+     09A5  22  E9  08          		SHLD	.f
+    				;	Ps();
+     09A8  CD  CA  09          		CALL	.o
+    				;}
+     09AB  C9                  		RET
+    				;sformat(string,form)	/* user wants data to go to a string */
+    				;char *string,*form;
+    				;{	Pst = string;
+    				
+     09AC  21  04  00          	sformat:	LXI	H,4
+     09AF  39                  		DAD	SP
+     09B0  7E                  		MOV	A,M
+     09B1  23                  		INX	H
+     09B2  66                  		MOV	H,M
+     09B3  6F                  		MOV	L,A
+     09B4  22  EB  08          		SHLD	.g
+    				;	fformat(-2,form);/* illegal value for a channel */
+     09B7  21  FE  FF          		LXI	H,-2
+     09BA  E5                  		PUSH	H
+     09BB  21  04  00          		LXI	H,4
+     09BE  39                  		DAD	SP
+     09BF  7E                  		MOV	A,M
+     09C0  23                  		INX	H
+     09C1  66                  		MOV	H,M
+     09C2  6F                  		MOV	L,A
+     09C3  E5                  		PUSH	H
+     09C4  CD  92  09          		CALL	fformat
+     09C7  C1                  		POP	B
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 5
+
+     09C8  C1                  		POP	B
+    				;}
+     09C9  C9                  		RET
+    				;static Ps()    /* output format up to next % */
+    				;{	while (*Pf != 0 && *Pf != '%') Pc(*Pf++);
+    				
+     09CA                      	.o:	DS	0
+     09CA  2A  E9  08          	.z:	LHLD	.f
+     09CD  7E                  		MOV	A,M
+     09CE  6F                  		MOV	L,A
+     09CF  07                  		RLC
+     09D0  9F                  		SBB	A
+     09D1  67                  		MOV	H,A
+     09D2  CD  A0  07          		CALL	e.0
+     09D5  CA  E7  09          		JZ	.bb
+     09D8  2A  E9  08          		LHLD	.f
+     09DB  7E                  		MOV	A,M
+     09DC  6F                  		MOV	L,A
+     09DD  07                  		RLC
+     09DE  9F                  		SBB	A
+     09DF  67                  		MOV	H,A
+     09E0  11  DB  FF          		LXI	D,-37
+     09E3  19                  		DAD	D
+     09E4  CD  A0  07          		CALL	e.0
+     09E7  CD  A0  07          	.bb:	CALL	e.0
+     09EA  CA  02  0A          		JZ	.ab
+     09ED  2A  E9  08          		LHLD	.f
+     09F0  23                  		INX	H
+     09F1  22  E9  08          		SHLD	.f
+     09F4  2B                  		DCX	H
+     09F5  7E                  		MOV	A,M
+     09F6  6F                  		MOV	L,A
+     09F7  07                  		RLC
+     09F8  9F                  		SBB	A
+     09F9  67                  		MOV	H,A
+     09FA  E5                  		PUSH	H
+     09FB  CD  03  0A          		CALL	.p
+     09FE  C1                  		POP	B
+     09FF  C3  CA  09          		JMP	.z
+     0A02                      	.ab:	DS	0
+    				;}
+     0A02  C9                  		RET
+    				;static Pc(c)
+    				;char c;
+    				;{	if (Pfo == -2) {
+    				
+     0A03  2A  E7  08          	.p:	LHLD	.e
+     0A06  23                  		INX	H
+     0A07  23                  		INX	H
+     0A08  7C                  		MOV	A,H
+     0A09  B5                  		ORA	L
+     0A0A  C2  28  0A          		JNZ	.cb
+    				;		*Pst++ = c;
+     0A0D  2A  EB  08          		LHLD	.g
+     0A10  23                  		INX	H
+     0A11  22  EB  08          		SHLD	.g
+     0A14  2B                  		DCX	H
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 6
+
+     0A15  E5                  		PUSH	H
+     0A16  21  04  00          		LXI	H,4
+     0A19  39                  		DAD	SP
+     0A1A  7E                  		MOV	A,M
+     0A1B  6F                  		MOV	L,A
+     0A1C  07                  		RLC
+     0A1D  9F                  		SBB	A
+     0A1E  67                  		MOV	H,A
+     0A1F  D1                  		POP	D
+     0A20  7D                  		MOV	A,L
+     0A21  12                  		STAX	D
+    				;		*Pst = 0;	/* terminate each intermediate string */
+     0A22  2A  EB  08          		LHLD	.g
+     0A25  36  00              		MVI	M,0
+    				;		return; }
+     0A27  C9                  		RET
+    				;	putc(c,Pfo);
+     0A28  21  02  00          	.cb:	LXI	H,2
+     0A2B  39                  		DAD	SP
+     0A2C  7E                  		MOV	A,M
+     0A2D  6F                  		MOV	L,A
+     0A2E  07                  		RLC
+     0A2F  9F                  		SBB	A
+     0A30  67                  		MOV	H,A
+     0A31  E5                  		PUSH	H
+     0A32  2A  E7  08          		LHLD	.e
+     0A35  E5                  		PUSH	H
+     0A36  CD  AC  05          		CALL	putc
+     0A39  C1                  		POP	B
+     0A3A  C1                  		POP	B
+    				;}
+     0A3B  C9                  		RET
+    				;printf(arg)	/* print one arg using current format */
+    				;union {
+    				;	int *ival;
+    				;	} arg;
+    				;	{
+    				;		static int racine,realPr;
+     0A3C  00  00              	.db:	DW	0
+     0A3E  00  00              	.eb:	DW	0
+    				;		static unsigned int uarg;
+     0A40  00  00              	.fb:	DW	0
+    				;		static char *ptr,*end;
+     0A42  00  00              	.gb:	DW	0
+     0A44  00  00              	.hb:	DW	0
+    				;		arg.ival = prnt_p ;
+    				
+     0A46  21  02  00          	printf:	LXI	H,2
+     0A49  39                  		DAD	SP
+     0A4A  E5                  		PUSH	H
+     0A4B  2A  E5  08          		LHLD	.d
+     0A4E  CD  5E  08          		CALL	q.
+    				;		prnt_p -= 1;	/* update assuming a 16-bit value to print */
+     0A51  2A  E5  08          		LHLD	.d
+     0A54  2B                  		DCX	H
+     0A55  2B                  		DCX	H
+     0A56  22  E5  08          		SHLD	.d
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 7
+
+    				;	again:	racine = Pr = 0;
+     0A59  21  00  00          	.ib:	LXI	H,0
+     0A5C  22  EF  08          		SHLD	.i
+     0A5F  22  3C  0A          		SHLD	.db
+    				;		realPr = -1;
+     0A62  21  FF  FF          		LXI	H,-1
+     0A65  22  3E  0A          		SHLD	.eb
+    				;		if ((ch = *++Pf) == 0) return;
+     0A68  2A  E9  08          		LHLD	.f
+     0A6B  23                  		INX	H
+     0A6C  22  E9  08          		SHLD	.f
+     0A6F  7E                  		MOV	A,M
+     0A70  6F                  		MOV	L,A
+     0A71  07                  		RLC
+     0A72  9F                  		SBB	A
+     0A73  67                  		MOV	H,A
+     0A74  22  F1  08          		SHLD	.j
+     0A77  CD  BC  07          		CALL	c.not
+     0A7A  CA  7E  0A          		JZ	.jb
+     0A7D  C9                  		RET
+    				;		Pad = ' ';
+     0A7E  21  20  00          	.jb:	LXI	H,32
+     0A81  7D                  		MOV	A,L
+     0A82  32  F3  08          		STA	.k
+    				;		if (ljust = (ch == '-')) ch = *Pf++;
+     0A85  2A  F1  08          		LHLD	.j
+     0A88  11  D3  FF          		LXI	D,-45
+     0A8B  19                  		DAD	D
+     0A8C  CD  BC  07          		CALL	c.not
+     0A8F  22  F4  08          		SHLD	.l
+     0A92  7C                  		MOV	A,H
+     0A93  B5                  		ORA	L
+     0A94  CA  A7  0A          		JZ	.kb
+     0A97  2A  E9  08          		LHLD	.f
+     0A9A  23                  		INX	H
+     0A9B  22  E9  08          		SHLD	.f
+     0A9E  2B                  		DCX	H
+     0A9F  7E                  		MOV	A,M
+     0AA0  6F                  		MOV	L,A
+     0AA1  07                  		RLC
+     0AA2  9F                  		SBB	A
+     0AA3  67                  		MOV	H,A
+     0AA4  22  F1  08          		SHLD	.j
+    				;		if (ch == '0') { Pad = '0'; ch = *Pf++; }
+     0AA7  2A  F1  08          	.kb:	LHLD	.j
+     0AAA  11  D0  FF          		LXI	D,-48
+     0AAD  19                  		DAD	D
+     0AAE  7C                  		MOV	A,H
+     0AAF  B5                  		ORA	L
+     0AB0  C2  CA  0A          		JNZ	.lb
+     0AB3  21  30  00          		LXI	H,48
+     0AB6  7D                  		MOV	A,L
+     0AB7  32  F3  08          		STA	.k
+     0ABA  2A  E9  08          		LHLD	.f
+     0ABD  23                  		INX	H
+     0ABE  22  E9  08          		SHLD	.f
+     0AC1  2B                  		DCX	H
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 8
+
+     0AC2  7E                  		MOV	A,M
+     0AC3  6F                  		MOV	L,A
+     0AC4  07                  		RLC
+     0AC5  9F                  		SBB	A
+     0AC6  67                  		MOV	H,A
+     0AC7  22  F1  08          		SHLD	.j
+    				;		Width = getnum();
+     0ACA  CD  3F  0C          	.lb:	CALL	.q
+     0ACD  22  ED  08          		SHLD	.h
+    				;		if (ch == '.') { ++Pf ; realPr = Pr = getnum(); }
+     0AD0  2A  F1  08          		LHLD	.j
+     0AD3  11  D2  FF          		LXI	D,-46
+     0AD6  19                  		DAD	D
+     0AD7  7C                  		MOV	A,H
+     0AD8  B5                  		ORA	L
+     0AD9  C2  EC  0A          		JNZ	.mb
+     0ADC  2A  E9  08          		LHLD	.f
+     0ADF  23                  		INX	H
+     0AE0  22  E9  08          		SHLD	.f
+     0AE3  CD  3F  0C          		CALL	.q
+     0AE6  22  EF  08          		SHLD	.i
+     0AE9  22  3E  0A          		SHLD	.eb
+    				;		if ((ch = *Pf++) != 's' && Pr > 7) Pr = 7;
+     0AEC  2A  E9  08          	.mb:	LHLD	.f
+     0AEF  23                  		INX	H
+     0AF0  22  E9  08          		SHLD	.f
+     0AF3  2B                  		DCX	H
+     0AF4  7E                  		MOV	A,M
+     0AF5  6F                  		MOV	L,A
+     0AF6  07                  		RLC
+     0AF7  9F                  		SBB	A
+     0AF8  67                  		MOV	H,A
+     0AF9  22  F1  08          		SHLD	.j
+     0AFC  11  8D  FF          		LXI	D,-115
+     0AFF  19                  		DAD	D
+     0B00  CD  A0  07          		CALL	e.0
+     0B03  CA  0F  0B          		JZ	.ob
+     0B06  2A  EF  08          		LHLD	.i
+     0B09  11  07  00          		LXI	D,7
+     0B0C  CD  E5  07          		CALL	c.lt
+     0B0F  CD  A0  07          	.ob:	CALL	e.0
+     0B12  CA  1B  0B          		JZ	.nb
+     0B15  21  07  00          		LXI	H,7
+     0B18  22  EF  08          		SHLD	.i
+    				;		switch (ch) {	/* decode the conversion type */
+     0B1B  2A  F1  08          	.nb:	LHLD	.j
+     0B1E  C3  15  0C          		JMP	.qb
+    				;		case 'c':	ptr = --arg.ival;
+     0B21  21  02  00          	.rb:	LXI	H,2
+     0B24  39                  		DAD	SP
+     0B25  E5                  		PUSH	H
+     0B26  7E                  		MOV	A,M
+     0B27  23                  		INX	H
+     0B28  66                  		MOV	H,M
+     0B29  6F                  		MOV	L,A
+     0B2A  2B                  		DCX	H
+     0B2B  2B                  		DCX	H
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 9
+
+     0B2C  CD  5E  08          		CALL	q.
+     0B2F  22  42  0A          		SHLD	.gb
+    				;				putfld(ptr,ptr+1); break;
+     0B32  2A  42  0A          		LHLD	.gb
+     0B35  E5                  		PUSH	H
+     0B36  2A  42  0A          		LHLD	.gb
+     0B39  23                  		INX	H
+     0B3A  E5                  		PUSH	H
+     0B3B  CD  26  0E          		CALL	.t
+     0B3E  C1                  		POP	B
+     0B3F  C1                  		POP	B
+     0B40  C3  39  0C          		JMP	.pb
+    				;		case 'd':	putsi((int_type)*--arg.ival,10); break;
+     0B43  21  02  00          	.sb:	LXI	H,2
+     0B46  39                  		DAD	SP
+     0B47  E5                  		PUSH	H
+     0B48  7E                  		MOV	A,M
+     0B49  23                  		INX	H
+     0B4A  66                  		MOV	H,M
+     0B4B  6F                  		MOV	L,A
+     0B4C  2B                  		DCX	H
+     0B4D  2B                  		DCX	H
+     0B4E  CD  5E  08          		CALL	q.
+     0B51  7E                  		MOV	A,M
+     0B52  23                  		INX	H
+     0B53  66                  		MOV	H,M
+     0B54  6F                  		MOV	L,A
+     0B55  E5                  		PUSH	H
+     0B56  21  0A  00          		LXI	H,10
+     0B59  E5                  		PUSH	H
+     0B5A  CD  43  0D          		CALL	.r
+     0B5D  C1                  		POP	B
+     0B5E  C1                  		POP	B
+     0B5F  C3  39  0C          		JMP	.pb
+    				;		case 'o' :	racine = 8; goto p_ui;
+     0B62  21  08  00          	.tb:	LXI	H,8
+     0B65  22  3C  0A          		SHLD	.db
+     0B68  C3  7A  0B          		JMP	.ub
+    				;		case 'u' :	racine = 10; goto p_ui;
+     0B6B  21  0A  00          	.vb:	LXI	H,10
+     0B6E  22  3C  0A          		SHLD	.db
+     0B71  C3  7A  0B          		JMP	.ub
+    				;		case 'x' :	racine = 16;
+     0B74  21  10  00          	.wb:	LXI	H,16
+     0B77  22  3C  0A          		SHLD	.db
+    				;	p_ui:			uarg = *--arg.ival;
+     0B7A  21  02  00          	.ub:	LXI	H,2
+     0B7D  39                  		DAD	SP
+     0B7E  E5                  		PUSH	H
+     0B7F  7E                  		MOV	A,M
+     0B80  23                  		INX	H
+     0B81  66                  		MOV	H,M
+     0B82  6F                  		MOV	L,A
+     0B83  2B                  		DCX	H
+     0B84  2B                  		DCX	H
+     0B85  CD  5E  08          		CALL	q.
+     0B88  7E                  		MOV	A,M
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 10
+
+     0B89  23                  		INX	H
+     0B8A  66                  		MOV	H,M
+     0B8B  6F                  		MOV	L,A
+     0B8C  22  40  0A          		SHLD	.fb
+    				;				putui((uns_type)uarg,racine);
+     0B8F  2A  40  0A          		LHLD	.fb
+     0B92  E5                  		PUSH	H
+     0B93  2A  3C  0A          		LHLD	.db
+     0B96  E5                  		PUSH	H
+     0B97  CD  E5  0D          		CALL	.s
+     0B9A  C1                  		POP	B
+     0B9B  C1                  		POP	B
+    				;				break;
+     0B9C  C3  39  0C          		JMP	.pb
+    				;		case 's' :	
+     0B9F                      	.xb:	DS	0
+    				;				for (end = ptr = *--arg.ival; *end++; );
+     0B9F  21  02  00          		LXI	H,2
+     0BA2  39                  		DAD	SP
+     0BA3  E5                  		PUSH	H
+     0BA4  7E                  		MOV	A,M
+     0BA5  23                  		INX	H
+     0BA6  66                  		MOV	H,M
+     0BA7  6F                  		MOV	L,A
+     0BA8  2B                  		DCX	H
+     0BA9  2B                  		DCX	H
+     0BAA  CD  5E  08          		CALL	q.
+     0BAD  7E                  		MOV	A,M
+     0BAE  23                  		INX	H
+     0BAF  66                  		MOV	H,M
+     0BB0  6F                  		MOV	L,A
+     0BB1  22  42  0A          		SHLD	.gb
+     0BB4  22  44  0A          		SHLD	.hb
+     0BB7  2A  44  0A          	.ac:	LHLD	.hb
+     0BBA  23                  		INX	H
+     0BBB  22  44  0A          		SHLD	.hb
+     0BBE  2B                  		DCX	H
+     0BBF  7E                  		MOV	A,M
+     0BC0  B7                  		ORA	A
+     0BC1  CA  C7  0B          		JZ	.zb
+     0BC4  C3  B7  0B          		JMP	.ac
+     0BC7                      	.zb:	DS	0
+    				;				if (--end - ptr > Pr && Pr) end = ptr + Pr;
+     0BC7  2A  44  0A          		LHLD	.hb
+     0BCA  2B                  		DCX	H
+     0BCB  22  44  0A          		SHLD	.hb
+     0BCE  E5                  		PUSH	H
+     0BCF  2A  42  0A          		LHLD	.gb
+     0BD2  CD  41  08          		CALL	s.
+     0BD5  EB                  		XCHG
+     0BD6  2A  EF  08          		LHLD	.i
+     0BD9  CD  E4  07          		CALL	c.gt
+     0BDC  CA  E2  0B          		JZ	.cc
+     0BDF  2A  EF  08          		LHLD	.i
+     0BE2  CD  A0  07          	.cc:	CALL	e.0
+     0BE5  CA  F3  0B          		JZ	.bc
+     0BE8  2A  42  0A          		LHLD	.gb
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 11
+
+     0BEB  EB                  		XCHG
+     0BEC  2A  EF  08          		LHLD	.i
+     0BEF  19                  		DAD	D
+     0BF0  22  44  0A          		SHLD	.hb
+    				;				putfld(ptr,end);
+     0BF3  2A  42  0A          	.bc:	LHLD	.gb
+     0BF6  E5                  		PUSH	H
+     0BF7  2A  44  0A          		LHLD	.hb
+     0BFA  E5                  		PUSH	H
+     0BFB  CD  26  0E          		CALL	.t
+     0BFE  C1                  		POP	B
+     0BFF  C1                  		POP	B
+    				;				break;
+     0C00  C3  39  0C          		JMP	.pb
+    				;		case 0	 :	return;
+     0C03  C9                  	.dc:	RET
+    				;		default  :	Pc(ch); Ps(); goto again;
+     0C04  2A  F1  08          	.ec:	LHLD	.j
+     0C07  E5                  		PUSH	H
+     0C08  CD  03  0A          		CALL	.p
+     0C0B  C1                  		POP	B
+     0C0C  CD  CA  09          		CALL	.o
+     0C0F  C3  59  0A          		JMP	.ib
+    				;		}
+     0C12  C3  39  0C          		JMP	.pb
+     0C15  CD  66  08          	.qb:	CALL	.switch
+     0C18  21  0B  63  00      		DW	.rb,99
+     0C1C  43  0B  64  00      		DW	.sb,100
+     0C20  62  0B  6F  00      		DW	.tb,111
+     0C24  6B  0B  75  00      		DW	.vb,117
+     0C28  74  0B  78  00      		DW	.wb,120
+     0C2C  9F  0B  73  00      		DW	.xb,115
+     0C30  03  0C  00  00      		DW	.dc,0
+     0C34  00  00              		DW	0
+     0C36  C3  04  0C          		JMP	.ec
+     0C39                      	.pb:	DS	0
+    				;		
+    				;	Ps();
+     0C39  CD  CA  09          		CALL	.o
+    				;}
+     0C3C  C9                  		RET
+    				;static getnum () {
+    				;	int n;
+     0C3D  00  00              	.fc:	DW	0
+    				;	for (n=0; (ch = *Pf) >= '0' && ch <='9'; )
+    				
+     0C3F  2A  3D  0C          	.q:	LHLD	.fc
+     0C42  E5                  		PUSH	H
+     0C43  21  00  00          		LXI	H,0
+     0C46  22  3D  0C          		SHLD	.fc
+     0C49  2A  E9  08          	.ic:	LHLD	.f
+     0C4C  7E                  		MOV	A,M
+     0C4D  6F                  		MOV	L,A
+     0C4E  07                  		RLC
+     0C4F  9F                  		SBB	A
+     0C50  67                  		MOV	H,A
+     0C51  22  F1  08          		SHLD	.j
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 12
+
+     0C54  11  30  00          		LXI	D,48
+     0C57  CD  D5  07          		CALL	c.le
+     0C5A  CA  66  0C          		JZ	.jc
+     0C5D  2A  F1  08          		LHLD	.j
+     0C60  11  39  00          		LXI	D,57
+     0C63  CD  D4  07          		CALL	c.ge
+     0C66  CD  A0  07          	.jc:	CALL	e.0
+     0C69  CA  8F  0C          		JZ	.hc
+    				;		n = 10*n + *Pf++ - '0';
+     0C6C  2A  3D  0C          		LHLD	.fc
+     0C6F  11  0A  00          		LXI	D,10
+     0C72  CD  80  08          		CALL	c.mult
+     0C75  E5                  		PUSH	H
+     0C76  2A  E9  08          		LHLD	.f
+     0C79  23                  		INX	H
+     0C7A  22  E9  08          		SHLD	.f
+     0C7D  2B                  		DCX	H
+     0C7E  7E                  		MOV	A,M
+     0C7F  6F                  		MOV	L,A
+     0C80  07                  		RLC
+     0C81  9F                  		SBB	A
+     0C82  67                  		MOV	H,A
+     0C83  D1                  		POP	D
+     0C84  19                  		DAD	D
+     0C85  11  D0  FF          		LXI	D,-48
+     0C88  19                  		DAD	D
+     0C89  22  3D  0C          		SHLD	.fc
+     0C8C  C3  49  0C          		JMP	.ic
+     0C8F                      	.hc:	DS	0
+    				;	return n;
+     0C8F  2A  3D  0C          		LHLD	.fc
+     0C92  EB                  	.kc:	XCHG
+     0C93  E1                  		POP	H
+     0C94  22  3D  0C          		SHLD	.fc
+     0C97  EB                  		XCHG
+     0C98  C9                  		RET
+    				;}
+    				;/* unsigned integer/long conversions to ascii. the number sn is
+    				;   converted in the specified radix sr. the ascii digits are
+    				;   generated in a buffer. the value returned is a pointer to
+    				;   the first character in the buffer.  The following routines use
+    				;   either longs or ints, depending on whether NOLONG is defined.
+    				;*/
+    				;static char *
+    				;ocvti (buflim, aln, alr)
+    				;char *buflim; uns_type aln;
+    				;	{
+    				;	static int lr;
+     0C99  00  00              	.lc:	DW	0
+    				;	static uns_type ln;
+     0C9B  00  00              	.mc:	DW	0
+    				;	lr = alr; ln = aln;
+    				
+     0C9D  21  02  00          	.w:	LXI	H,2
+     0CA0  39                  		DAD	SP
+     0CA1  7E                  		MOV	A,M
+     0CA2  23                  		INX	H
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 13
+
+     0CA3  66                  		MOV	H,M
+     0CA4  6F                  		MOV	L,A
+     0CA5  22  99  0C          		SHLD	.lc
+     0CA8  21  04  00          		LXI	H,4
+     0CAB  39                  		DAD	SP
+     0CAC  7E                  		MOV	A,M
+     0CAD  23                  		INX	H
+     0CAE  66                  		MOV	H,M
+     0CAF  6F                  		MOV	L,A
+     0CB0  22  9B  0C          		SHLD	.mc
+    				;	do {
+     0CB3                      	.pc:	DS	0
+    				;		*--buflim = hexdig(lr == 10 ? ln % 10 : ln & (lr -1));
+     0CB3  21  06  00          		LXI	H,6
+     0CB6  39                  		DAD	SP
+     0CB7  E5                  		PUSH	H
+     0CB8  7E                  		MOV	A,M
+     0CB9  23                  		INX	H
+     0CBA  66                  		MOV	H,M
+     0CBB  6F                  		MOV	L,A
+     0CBC  2B                  		DCX	H
+     0CBD  CD  5E  08          		CALL	q.
+     0CC0  E5                  		PUSH	H
+     0CC1  2A  99  0C          		LHLD	.lc
+     0CC4  11  F6  FF          		LXI	D,-10
+     0CC7  19                  		DAD	D
+     0CC8  CD  BC  07          		CALL	c.not
+     0CCB  CA  DC  0C          		JZ	.qc
+     0CCE  2A  9B  0C          		LHLD	.mc
+     0CD1  EB                  		XCHG
+     0CD2  21  0A  00          		LXI	H,10
+     0CD5  CD  9C  08          		CALL	c.udv
+     0CD8  EB                  		XCHG
+     0CD9  C3  E7  0C          		JMP	.rc
+     0CDC  2A  99  0C          	.qc:	LHLD	.lc
+     0CDF  2B                  		DCX	H
+     0CE0  E5                  		PUSH	H
+     0CE1  2A  9B  0C          		LHLD	.mc
+     0CE4  CD  96  07          		CALL	a.
+     0CE7  E5                  	.rc:	PUSH	H
+     0CE8  CD  C6  0E          		CALL	.v
+     0CEB  C1                  		POP	B
+     0CEC  D1                  		POP	D
+     0CED  7D                  		MOV	A,L
+     0CEE  12                  		STAX	D
+    				;		ln = lr == 8 ? ln >>3 : lr == 10 ? ln/10 : ln>>4 ;
+     0CEF  2A  99  0C          		LHLD	.lc
+     0CF2  11  F8  FF          		LXI	D,-8
+     0CF5  19                  		DAD	D
+     0CF6  CD  BC  07          		CALL	c.not
+     0CF9  CA  09  0D          		JZ	.sc
+     0CFC  2A  9B  0C          		LHLD	.mc
+     0CFF  EB                  		XCHG
+     0D00  21  03  00          		LXI	H,3
+     0D03  CD  35  08          		CALL	c.usr
+     0D06  C3  2D  0D          		JMP	.tc
+     0D09  2A  99  0C          	.sc:	LHLD	.lc
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 14
+
+     0D0C  11  F6  FF          		LXI	D,-10
+     0D0F  19                  		DAD	D
+     0D10  CD  BC  07          		CALL	c.not
+     0D13  CA  23  0D          		JZ	.uc
+     0D16  2A  9B  0C          		LHLD	.mc
+     0D19  EB                  		XCHG
+     0D1A  21  0A  00          		LXI	H,10
+     0D1D  CD  9C  08          		CALL	c.udv
+     0D20  C3  2D  0D          		JMP	.vc
+     0D23  2A  9B  0C          	.uc:	LHLD	.mc
+     0D26  EB                  		XCHG
+     0D27  21  04  00          		LXI	H,4
+     0D2A  CD  35  08          		CALL	c.usr
+     0D2D                      	.vc:	DS	0
+     0D2D  22  9B  0C          	.tc:	SHLD	.mc
+    				;		}
+    				;	while (ln) ;
+     0D30  2A  9B  0C          	.nc:	LHLD	.mc
+     0D33  7C                  		MOV	A,H
+     0D34  B5                  		ORA	L
+     0D35  C2  B3  0C          		JNZ	.pc
+     0D38                      	.oc:	DS	0
+    				;	return buflim;
+     0D38  21  06  00          		LXI	H,6
+     0D3B  39                  		DAD	SP
+     0D3C  7E                  		MOV	A,M
+     0D3D  23                  		INX	H
+     0D3E  66                  		MOV	H,M
+     0D3F  6F                  		MOV	L,A
+     0D40  C9                  		RET
+    				;}
+    				;/* Output a signed integer in the specified radix. */
+    				;static putsi(n,radix)
+    				;int_type n;	{
+    				;	char nbuf[NBS];  /* conversion buffer */
+    				;	static int_type dsn;
+     0D41  00  00              	.wc:	DW	0
+    				;	dsn = n < 0 ? -n : n;
+    				
+     0D43  21  B0  FF          	.r:	LXI	H,-80
+     0D46  39                  		DAD	SP
+     0D47  F9                  		SPHL
+     0D48  21  54  00          		LXI	H,84
+     0D4B  39                  		DAD	SP
+     0D4C  7E                  		MOV	A,M
+     0D4D  23                  		INX	H
+     0D4E  66                  		MOV	H,M
+     0D4F  6F                  		MOV	L,A
+     0D50  11  00  00          		LXI	D,0
+     0D53  CD  E4  07          		CALL	c.gt
+     0D56  CA  67  0D          		JZ	.xc
+     0D59  21  54  00          		LXI	H,84
+     0D5C  39                  		DAD	SP
+     0D5D  7E                  		MOV	A,M
+     0D5E  23                  		INX	H
+     0D5F  66                  		MOV	H,M
+     0D60  6F                  		MOV	L,A
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 15
+
+     0D61  CD  4B  08          		CALL	c.neg
+     0D64  C3  6F  0D          		JMP	.yc
+     0D67  21  54  00          	.xc:	LXI	H,84
+     0D6A  39                  		DAD	SP
+     0D6B  7E                  		MOV	A,M
+     0D6C  23                  		INX	H
+     0D6D  66                  		MOV	H,M
+     0D6E  6F                  		MOV	L,A
+     0D6F  22  41  0D          	.yc:	SHLD	.wc
+    				;	nbp = ocvti ( nbpe = nbuf+NBS, dsn, radix);
+     0D72  21  00  00          		LXI	H,0
+     0D75  39                  		DAD	SP
+     0D76  11  50  00          		LXI	D,80
+     0D79  19                  		DAD	D
+     0D7A  22  F8  08          		SHLD	.n
+     0D7D  E5                  		PUSH	H
+     0D7E  2A  41  0D          		LHLD	.wc
+     0D81  E5                  		PUSH	H
+     0D82  21  56  00          		LXI	H,86
+     0D85  39                  		DAD	SP
+     0D86  7E                  		MOV	A,M
+     0D87  23                  		INX	H
+     0D88  66                  		MOV	H,M
+     0D89  6F                  		MOV	L,A
+     0D8A  E5                  		PUSH	H
+     0D8B  CD  9D  0C          		CALL	.w
+     0D8E  C1                  		POP	B
+     0D8F  C1                  		POP	B
+     0D90  C1                  		POP	B
+     0D91  22  F6  08          		SHLD	.m
+    				;	if (n < 0) {	if (Pad != ' ') { Pc('-'); --Width; }
+     0D94  21  54  00          		LXI	H,84
+     0D97  39                  		DAD	SP
+     0D98  7E                  		MOV	A,M
+     0D99  23                  		INX	H
+     0D9A  66                  		MOV	H,M
+     0D9B  6F                  		MOV	L,A
+     0D9C  11  00  80          		LXI	D,32768
+     0D9F  7C                  		MOV	A,H
+     0DA0  EE  80              		XRI	128
+     0DA2  67                  		MOV	H,A
+     0DA3  19                  		DAD	D
+     0DA4  DA  D2  0D          		JC	.zc
+     0DA7  3A  F3  08          		LDA	.k
+     0DAA  6F                  		MOV	L,A
+     0DAB  07                  		RLC
+     0DAC  9F                  		SBB	A
+     0DAD  67                  		MOV	H,A
+     0DAE  11  E0  FF          		LXI	D,-32
+     0DB1  19                  		DAD	D
+     0DB2  7C                  		MOV	A,H
+     0DB3  B5                  		ORA	L
+     0DB4  CA  C9  0D          		JZ	.ad
+     0DB7  21  2D  00          		LXI	H,45
+     0DBA  E5                  		PUSH	H
+     0DBB  CD  03  0A          		CALL	.p
+     0DBE  C1                  		POP	B
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 16
+
+     0DBF  2A  ED  08          		LHLD	.h
+     0DC2  2B                  		DCX	H
+     0DC3  22  ED  08          		SHLD	.h
+    				;			      else *--nbp = '-';
+     0DC6  C3  D2  0D          		JMP	.bd
+     0DC9  2A  F6  08          	.ad:	LHLD	.m
+     0DCC  2B                  		DCX	H
+     0DCD  22  F6  08          		SHLD	.m
+     0DD0  36  2D              		MVI	M,45
+     0DD2                      	.bd:	DS	0
+    				;		   }
+    				;	putfld (nbp, nbpe);
+     0DD2  2A  F6  08          	.zc:	LHLD	.m
+     0DD5  E5                  		PUSH	H
+     0DD6  2A  F8  08          		LHLD	.n
+     0DD9  E5                  		PUSH	H
+     0DDA  CD  26  0E          		CALL	.t
+     0DDD  C1                  		POP	B
+     0DDE  C1                  		POP	B
+    				;}
+     0DDF  21  50  00          	.cd:	LXI	H,80
+     0DE2  39                  		DAD	SP
+     0DE3  F9                  		SPHL
+     0DE4  C9                  		RET
+    				;static putui(ui,radix) /* output an unsigned integer in the specified radix */
+    				;uns_type ui;
+    				;	{
+    				;	char nbuf[NBS];  /* conversion buffer */
+    				;	nbp = ocvti (nbpe = nbuf + NBS, ui, radix);
+    				
+     0DE5  21  B0  FF          	.s:	LXI	H,-80
+     0DE8  39                  		DAD	SP
+     0DE9  F9                  		SPHL
+     0DEA  21  00  00          		LXI	H,0
+     0DED  39                  		DAD	SP
+     0DEE  11  50  00          		LXI	D,80
+     0DF1  19                  		DAD	D
+     0DF2  22  F8  08          		SHLD	.n
+     0DF5  E5                  		PUSH	H
+     0DF6  21  56  00          		LXI	H,86
+     0DF9  39                  		DAD	SP
+     0DFA  7E                  		MOV	A,M
+     0DFB  23                  		INX	H
+     0DFC  66                  		MOV	H,M
+     0DFD  6F                  		MOV	L,A
+     0DFE  E5                  		PUSH	H
+     0DFF  21  56  00          		LXI	H,86
+     0E02  39                  		DAD	SP
+     0E03  7E                  		MOV	A,M
+     0E04  23                  		INX	H
+     0E05  66                  		MOV	H,M
+     0E06  6F                  		MOV	L,A
+     0E07  E5                  		PUSH	H
+     0E08  CD  9D  0C          		CALL	.w
+     0E0B  C1                  		POP	B
+     0E0C  C1                  		POP	B
+     0E0D  C1                  		POP	B
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 17
+
+     0E0E  22  F6  08          		SHLD	.m
+    				;	putfld (nbp, nbpe);
+     0E11  2A  F6  08          		LHLD	.m
+     0E14  E5                  		PUSH	H
+     0E15  2A  F8  08          		LHLD	.n
+     0E18  E5                  		PUSH	H
+     0E19  CD  26  0E          		CALL	.t
+     0E1C  C1                  		POP	B
+     0E1D  C1                  		POP	B
+    				;}
+     0E1E  21  50  00          	.dd:	LXI	H,80
+     0E21  39                  		DAD	SP
+     0E22  F9                  		SPHL
+     0E23  C9                  		RET
+    				;	
+    				;static putfld(string, end)/* output a field containing a specified string ending
+    				;			     at end. Takes care of justification and padding.
+    				;			  */
+    				;char *string,*end;
+    				;	{
+    				;	static int length;
+     0E24  00  00              	.ed:	DW	0
+    				;	length = end - string;
+    				
+     0E26  21  02  00          	.t:	LXI	H,2
+     0E29  39                  		DAD	SP
+     0E2A  7E                  		MOV	A,M
+     0E2B  23                  		INX	H
+     0E2C  66                  		MOV	H,M
+     0E2D  6F                  		MOV	L,A
+     0E2E  E5                  		PUSH	H
+     0E2F  21  06  00          		LXI	H,6
+     0E32  39                  		DAD	SP
+     0E33  7E                  		MOV	A,M
+     0E34  23                  		INX	H
+     0E35  66                  		MOV	H,M
+     0E36  6F                  		MOV	L,A
+     0E37  CD  41  08          		CALL	s.
+     0E3A  22  24  0E          		SHLD	.ed
+    				;	if (! ljust)
+     0E3D  2A  F4  08          		LHLD	.l
+     0E40  CD  BC  07          		CALL	c.not
+     0E43  CA  57  0E          		JZ	.fd
+    				;		putpad(Pad,length);
+     0E46  3A  F3  08          		LDA	.k
+     0E49  6F                  		MOV	L,A
+     0E4A  07                  		RLC
+     0E4B  9F                  		SBB	A
+     0E4C  67                  		MOV	H,A
+     0E4D  E5                  		PUSH	H
+     0E4E  2A  24  0E          		LHLD	.ed
+     0E51  E5                  		PUSH	H
+     0E52  CD  9C  0E          		CALL	.u
+     0E55  C1                  		POP	B
+     0E56  C1                  		POP	B
+    				;	while (length--) {
+     0E57                      	.fd:	DS	0
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 18
+
+     0E57  2A  24  0E          	.gd:	LHLD	.ed
+     0E5A  2B                  		DCX	H
+     0E5B  22  24  0E          		SHLD	.ed
+     0E5E  23                  		INX	H
+     0E5F  7C                  		MOV	A,H
+     0E60  B5                  		ORA	L
+     0E61  CA  86  0E          		JZ	.hd
+    				;		Pc (*string++);
+     0E64  21  04  00          		LXI	H,4
+     0E67  39                  		DAD	SP
+     0E68  E5                  		PUSH	H
+     0E69  7E                  		MOV	A,M
+     0E6A  23                  		INX	H
+     0E6B  66                  		MOV	H,M
+     0E6C  6F                  		MOV	L,A
+     0E6D  23                  		INX	H
+     0E6E  CD  5E  08          		CALL	q.
+     0E71  2B                  		DCX	H
+     0E72  7E                  		MOV	A,M
+     0E73  6F                  		MOV	L,A
+     0E74  07                  		RLC
+     0E75  9F                  		SBB	A
+     0E76  67                  		MOV	H,A
+     0E77  E5                  		PUSH	H
+     0E78  CD  03  0A          		CALL	.p
+     0E7B  C1                  		POP	B
+    				;		--Width;
+     0E7C  2A  ED  08          		LHLD	.h
+     0E7F  2B                  		DCX	H
+     0E80  22  ED  08          		SHLD	.h
+    				;		}
+     0E83  C3  57  0E          		JMP	.gd
+     0E86                      	.hd:	DS	0
+    				;	if (ljust) putpad(' ',0);
+     0E86  2A  F4  08          		LHLD	.l
+     0E89  7C                  		MOV	A,H
+     0E8A  B5                  		ORA	L
+     0E8B  CA  9B  0E          		JZ	.id
+     0E8E  21  20  00          		LXI	H,32
+     0E91  E5                  		PUSH	H
+     0E92  21  00  00          		LXI	H,0
+     0E95  E5                  		PUSH	H
+     0E96  CD  9C  0E          		CALL	.u
+     0E99  C1                  		POP	B
+     0E9A  C1                  		POP	B
+    				;}
+     0E9B  C9                  	.id:	RET
+    				;static putpad(ch,count) {
+    				;	while (Width > count) { Pc(ch); --Width; }
+    				
+     0E9C                      	.u:	DS	0
+     0E9C  21  02  00          	.jd:	LXI	H,2
+     0E9F  39                  		DAD	SP
+     0EA0  7E                  		MOV	A,M
+     0EA1  23                  		INX	H
+     0EA2  66                  		MOV	H,M
+     0EA3  6F                  		MOV	L,A
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 19
+
+     0EA4  EB                  		XCHG
+     0EA5  2A  ED  08          		LHLD	.h
+     0EA8  CD  E5  07          		CALL	c.lt
+     0EAB  CA  C5  0E          		JZ	.kd
+     0EAE  21  04  00          		LXI	H,4
+     0EB1  39                  		DAD	SP
+     0EB2  7E                  		MOV	A,M
+     0EB3  23                  		INX	H
+     0EB4  66                  		MOV	H,M
+     0EB5  6F                  		MOV	L,A
+     0EB6  E5                  		PUSH	H
+     0EB7  CD  03  0A          		CALL	.p
+     0EBA  C1                  		POP	B
+     0EBB  2A  ED  08          		LHLD	.h
+     0EBE  2B                  		DCX	H
+     0EBF  22  ED  08          		SHLD	.h
+     0EC2  C3  9C  0E          		JMP	.jd
+     0EC5                      	.kd:	DS	0
+    				;	}
+     0EC5  C9                  		RET
+    				;static hexdig(c) {
+    				;	return c + (c <= 9 ? '0' : 'A' - 10); }
+    				
+     0EC6  21  02  00          	.v:	LXI	H,2
+     0EC9  39                  		DAD	SP
+     0ECA  7E                  		MOV	A,M
+     0ECB  23                  		INX	H
+     0ECC  66                  		MOV	H,M
+     0ECD  6F                  		MOV	L,A
+     0ECE  11  09  00          		LXI	D,9
+     0ED1  CD  D4  07          		CALL	c.ge
+     0ED4  CA  DD  0E          		JZ	.ld
+     0ED7  21  30  00          		LXI	H,48
+     0EDA  C3  E0  0E          		JMP	.md
+     0EDD  21  37  00          	.ld:	LXI	H,55
+     0EE0  EB                  	.md:	XCHG
+     0EE1  21  02  00          		LXI	H,2
+     0EE4  39                  		DAD	SP
+     0EE5  7E                  		MOV	A,M
+     0EE6  23                  		INX	H
+     0EE7  66                  		MOV	H,M
+     0EE8  6F                  		MOV	L,A
+     0EE9  19                  		DAD	D
+     0EEA  C9                  		RET
+    				;/* Definitions for printf and fprintf to allow multiple args. */
+    				;#define printf prnt_1(),prnt_2
+    				;#define fprintf prnt_1(),prnt_3
+    				;#define sprintf prnt_1(),prnt_4
+    				;
+    				;/* #define HDOS 1 */
+    				;char *osname;
+     0EEB  00  00              	osname:	DW	0
+    				;int osver;
+     0EED  00  00              	osver:	DW	0
+    				;/********************************************************
+    				;**
+    				;** getosver
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 20
+
+    				;**
+    				;** set globals 'osname' and 'osver' to reflect the current
+    				;** operating system and version. These are used to direct
+    				;** code to the appropriate OS-specific function calls.
+    				;**
+    				;********************************************************/
+    				;int getosver()
+    				;{
+    				;	int ver;
+     0EEF  00  00              	.nd:	DW	0
+    				;	
+    				;	ver = bdoshl(0x0C, 0);
+    				
+     0EF1  2A  EF  0E          	getosve:	LHLD	.nd
+     0EF4  E5                  		PUSH	H
+     0EF5  21  0C  00          		LXI	H,12
+     0EF8  E5                  		PUSH	H
+     0EF9  21  00  00          		LXI	H,0
+     0EFC  E5                  		PUSH	H
+     0EFD  CD  4A  0F          		CALL	bdoshl
+     0F00  C1                  		POP	B
+     0F01  C1                  		POP	B
+     0F02  22  EF  0E          		SHLD	.nd
+    				;  /* H == 0 -> CP/M, H == 1 -> MP/M
+    				;	** release is BCD stored in L
+    				;	*/
+    				;	printf("BDOS result: %04x\n", ver);
+     0F05  CD  FA  08          		CALL	prnt_1
+     0F08  21  78  0F          		LXI	H,.c
+     0F0B  E5                  		PUSH	H
+     0F0C  2A  EF  0E          		LHLD	.nd
+     0F0F  E5                  		PUSH	H
+     0F10  CD  02  09          		CALL	prnt_2
+     0F13  C1                  		POP	B
+     0F14  C1                  		POP	B
+    				;	if ((ver>>8) == 0)
+     0F15  2A  EF  0E          		LHLD	.nd
+     0F18  EB                  		XCHG
+     0F19  21  08  00          		LXI	H,8
+     0F1C  CD  27  08          		CALL	c.asr
+     0F1F  CD  BC  07          		CALL	c.not
+     0F22  CA  2E  0F          		JZ	.od
+    				;		osname = "CPM";
+     0F25  21  8B  0F          		LXI	H,.c+19
+     0F28  22  EB  0E          		SHLD	osname
+    				;	else
+     0F2B  C3  34  0F          		JMP	.pd
+     0F2E                      	.od:	DS	0
+    				;		osname = "MPM";
+     0F2E  21  8F  0F          		LXI	H,.c+23
+     0F31  22  EB  0E          		SHLD	osname
+     0F34                      	.pd:	DS	0
+    				;	osver = ver && 0xFF;
+     0F34  2A  EF  0E          		LHLD	.nd
+     0F37  7C                  		MOV	A,H
+     0F38  B5                  		ORA	L
+     0F39  CA  3F  0F          		JZ	.qd
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 21
+
+     0F3C  21  FF  00          		LXI	H,255
+     0F3F  CD  A0  07          	.qd:	CALL	e.0
+     0F42  22  ED  0E          		SHLD	osver
+    				;}
+     0F45  E1                  	.rd:	POP	H
+     0F46  22  EF  0E          		SHLD	.nd
+     0F49  C9                  		RET
+    				;/********************************************************
+    				;**
+    				;**	*** Valid for use only in CP/M ***
+    				;**
+    				;** bdoshl - Call CP/M BDOS function with given values
+    				;**		for registers C and DE.  Return the value
+    				;**		from the HL register.
+    				;**
+    				;********************************************************/
+    				;int bdoshl(c, de)
+    				;	int c, de;
+    				;{
+    				;#asm
+    				
+     0F4A                      	bdoshl:	DS	0
+    				;#asm
+     0F4A  E1                  	        POP     H
+     0F4B  D1                  	        POP     D
+     0F4C  C1                  	        POP     B
+     0F4D  C5                  	        PUSH    B
+     0F4E  D5                  	        PUSH    D
+     0F4F  E5                  	        PUSH    H
+     0F50  CD  05  00          	        CALL    5
+    				;#endasm
+    				;}
+     0F53  C9                  		RET
+    				;main(argc, argv)
+    				;int argc;
+    				;char *argv[];
+    				;{
+    				;	
+    				;	getosver();
+    				
+     0F54  CD  F1  0E          	main:	CALL	getosve
+    				;	
+    				;	printf("%s Operating System\n", osname);
+     0F57  CD  FA  08          		CALL	prnt_1
+     0F5A  21  93  0F          		LXI	H,.c+27
+     0F5D  E5                  		PUSH	H
+     0F5E  2A  EB  0E          		LHLD	osname
+     0F61  E5                  		PUSH	H
+     0F62  CD  02  09          		CALL	prnt_2
+     0F65  C1                  		POP	B
+     0F66  C1                  		POP	B
+    				;	printf("Version: %x\n", osver);
+     0F67  CD  FA  08          		CALL	prnt_1
+     0F6A  21  A8  0F          		LXI	H,.c+48
+     0F6D  E5                  		PUSH	H
+     0F6E  2A  ED  0E          		LHLD	osver
+     0F71  E5                  		PUSH	H
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 22
+
+     0F72  CD  02  09          		CALL	prnt_2
+     0F75  C1                  		POP	B
+     0F76  C1                  		POP	B
+    				;}
+     0F77  C9                  		RET
+    				;#include "stdlib.c"
+    				;/* stdlib.c - Standard C library - (c) 1983 The Software Toolworks.
+    				;   Some of these routines were provided by Jim and Gary Gilbreath.
+    				;   The fast str routines were donated by Dr. Jim Gillogly.
+    				;   If this file is #included at the end of a source program, routines
+    				;   will be compiled automatically as needed.
+    				;   In the following, s, t are strings terminated by a 0 byte, and c is
+    				;   a char or an int containing an ASCII character.  Other args are ints
+    				;   except where noted otherwise.
+    				;   abs(i)	Absolute value of i.
+    				;   alloc(i)	Returns pointer to i bytes of available memory.
+    				;   atoi(s)	Integer value of string s, optional leading +/-,
+    				;		stops at first non-digit.
+    				;   bdos(c,de)	Calls CP/M bdos with registers shown; returns contents of A,
+    				;		as a 16-bit sign-extended number.
+    				;   free(p)	Frees up memory at p.  P must have been value returned by alloc.
+    				;   getline(s,i) Reads a line from console into s, stopping at newline or i char-
+    				;		acters.  0-terminates string; returns length including 0 byte.
+    				;   index(s,t)	Position in string s of string t, or -1 if not there.
+    				;   isalpha(c)	1 if c is an alphabetic character A-Z or a-z.
+    				;   isdigit(c)	1 if c is an ASCII digit 0-9.
+    				;   islower(c)	1 if c is a lower case character a-z.
+    				;   isspace(c)	1 if c is a blank, tab or newline.
+    				;   isupper(c)	1 if c is an upper case character A-Z.
+    				;   itoa(i,s)	Converts i to an ASCII string in char s[7]; returns s.
+    				;   makfcb(s,fcb) Unpack file name s into char fcb[36] to make a CP/M fcb.
+    				;   max(i,j)	The greater of i and j.
+    				;   min(i,j)	The lesser of i and j.
+    				;   rename(s,t)	Renames the file named s to be called t.  Returns -1 for
+    				;		failure, a non-negative number for success.
+    				;   strcat(s,t)	Appends t to s.  No checking for overflow of s.
+    				;   strcmp(s,t)	-1, 0 or 1 if s < t, s == t, s > t respectively.
+    				;   strcpy(s,t)	Copies t into s.  No checking for overflow of s.
+    				;   strlen(s)	The number of bytes in s, exclusive of the 0 byte.
+    				;		(Note: it takes strlen(s)+1 bytes to hold s.)
+    				;   tolower(c)	c, but if upper case it is converted to lower case.
+    				;   toupper(c)	c, but if lower case it is converted to upper case.
+    				;   unlink(s)	Deletes the file s, if it exists.
+    				;   None of these routines calls any other functions, except that the file
+    				;   routines call bdos and makfcb. */
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+                                                 8080 AS 2.3 (7/15/83)
+                                                  		Page 23
+
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;/*	*	*/
+    				;
+    				;
+     0F78                      	.c:
+     0F78  42  44  4F  53  20 		DB	'BDOS result: %04x'
+     0F89  0A                  		DB	10
+     0F8A  00                  		DB	0
+     0F8B  43  50  4D          		DB	'CPM'
+     0F8E  00                  		DB	0
+     0F8F  4D  50  4D          		DB	'MPM'
+     0F92  00                  		DB	0
+     0F93  25  73  20  4F  70 		DB	'%s Operating System'
+     0FA6  0A                  		DB	10
+     0FA7  00                  		DB	0
+     0FA8  56  65  72  73  69 		DB	'Version: %x'
+     0FB3  0A                  		DB	10
+     0FB4  00                  		DB	0
+     0FB5                      	$END	DS	0
+     0100                      		END	$INIT
+ 0100   First word of program
+ 0FB4   Last word of program
+     0	Assembly errors
+

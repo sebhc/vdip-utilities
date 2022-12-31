@@ -1,0 +1,10 @@
+era vutil.rel
+era vinc.rel
+era $1.rel
+c vutil
+m80 =vutil
+c vinc
+m80 =vinc
+c $1
+m80 =$1
+l80 $1,vutil,vinc,pio,b:fprintf,b:flibrary/s,b:stdlib/s,b:clibrary/s,$1/n/e

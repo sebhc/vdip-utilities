@@ -1,0 +1,10 @@
+era vutil.rel
+era vinc.rel
+era vcd.rel
+c vutil
+m80 =vutil
+c vinc
+m80 =vinc
+c vcd
+m80 =vcd
+l80 vcd,vutil,vinc,pio,b:fprintf,b:flibrary/s,b:stdlib/s,b:clibrary/s,vcd/n/e
