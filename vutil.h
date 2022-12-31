@@ -22,8 +22,7 @@
 ** line endings; CP/M files require MS-DOS style CR-LF
 ** line endings.
 */
-#define	HDOS	1
-#define	DEBUG	1
+#define	CPM	1
 
 #define NUL 	'\0'
 #define	TRUE	1
