@@ -31,13 +31,27 @@
 ;
 ; Release: September, 2017
 ;
+;	Added capability to assemble for either
+;	Z80 or 8080 - GFR 16 Jan 2023
+;
 ; 	Glenn Roberts
 ; 	glenn.f.roberts@gmail.com
 ;
+FALSE	EQU	0
+TRUE	EQU	1
+;
+;	If MZ80 is TRUE then assemble for Z80 instructions,
+;	otherwise 8080 format is assumed.
+;
+MZ80	EQU	FALSE
+;
 ; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ;
-;	Assemble for Z80 mnemonics
+;	IF	MZ80
 ;	.Z80
+;	ELSE
+;	.8080
+;	ENDIF
 ;
 ;	Public routines defined in this module:
 ;
@@ -60,8 +74,23 @@ OUTP:	POP	H	; return address
 	PUSH	D
 	PUSH	H
 	
+	IF	MZ80
+;
+;	For Z80 this is a single instruction
+;
 	DB 0EDH,59H	; OUT	(C),E	; output the byte
 
+	ELSE
+;
+;	For 8080 we need to patch the port number
+;
+	MOV	A,C	; get the port #
+	STA	OPORT	; patch OUT instruction
+	MOV	A,E	; get the value
+	OUT	0	; output it
+OPORT	EQU	$-1
+	ENDIF
+;
 	RET		; done!
 ;
 ; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -77,8 +106,23 @@ INP:	POP	H	; return address
 	PUSH	B	; now fix the stack...
 	PUSH	H
 
+	IF	MZ80
+;
+;	For Z80 this is a single instruction
+;
 	DB 0EDH,68H	; IN	L,(C)	; read the byte
 	MVI	H,0	; result in HL on return
+	ELSE
+;
+;	For 8080 we need to patch the port number
+;
+	MOV	A,C	; get the port #
+	STA	INPORT	; patch IN instruction
+	IN	0	; read the port
+INPORT	EQU	$-1
+	MOV	L,A	; save result in L
+	MVI	H,0	; result in HL on return
+	ENDIF
 
 	RET
 
