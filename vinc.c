@@ -1,7 +1,7 @@
 /********************************************************
 ** vinc.c
 **
-**	Version 4.0 (beta)
+**  Version 4.0 (beta)
 **
 ** This library provides an Application Programming
 ** Interface (API) to the FTDI Vinculum Firmware defined at:
@@ -43,8 +43,8 @@
 ** link this code, along with any other required modules,
 ** with the main (calling) program.
 **
-**	Glenn Roberts
-**	31 January 2022
+**  Glenn Roberts
+**  31 January 2022
 **
 ********************************************************/
 #include "fprintf.h"
@@ -61,25 +61,25 @@
 ** in the string (\r).
 **
 ** Return:
-**		0	Success
-**		-1	I/O error
+**    0 Success
+**    -1  I/O error
 **
 ********************************************************/
 int str_send(s)
 char *s;
 {
-	char *c;
-	int rc;
-	
+  char *c;
+  int rc;
+  
 #ifdef DEBUG
-	printf("->str_send %s\n", s);
+  printf("->str_send %s\n", s);
 #endif
-	rc = 0;
+  rc = 0;
 
-	for (c=s; ((*c!=0) && (rc!=-1)); c++)
-		rc = out_vwait(*c, MAXWAIT);
-	
-	return rc;
+  for (c=s; ((*c!=0) && (rc!=-1)); c++)
+    rc = out_vwait(*c, MAXWAIT);
+  
+  return rc;
 }
 
 /********************************************************
@@ -93,37 +93,37 @@ char *s;
 ** specified maximum time MAXWAIT for each byte.
 **
 ** Returns:
-**		0 if read was successful
-**		-1 if read timed out.
+**    0 if read was successful
+**    -1 if read timed out.
 **
 ********************************************************/
 int str_rdw(s, tchar)
 char *s;
 char tchar;
 {
-	int c, rc;
-	int timedout;
-	
-	timedout = FALSE;
-	rc = 0;
+  int c, rc;
+  int timedout;
+  
+  timedout = FALSE;
+  rc = 0;
 
-	do {
-		if((c = in_vwait(MAXWAIT)) == -1)
-			timedout = TRUE;
-		else {
-			/* got a byte, check for end */
-			if (c == tchar)
-				c = 0;
-			*s++ = c;
-		}
-	} while ((c != 0) && (!timedout));
-	if (timedout) {
-		/* terminate the string and exit */
-		*s = 0;
-		rc = -1;
-	}
+  do {
+    if((c = in_vwait(MAXWAIT)) == -1)
+      timedout = TRUE;
+    else {
+      /* got a byte, check for end */
+      if (c == tchar)
+        c = 0;
+      *s++ = c;
+    }
+  } while ((c != 0) && (!timedout));
+  if (timedout) {
+    /* terminate the string and exit */
+    *s = 0;
+    rc = -1;
+  }
 
-	return rc;
+  return rc;
 }
 
 /********************************************************
@@ -133,8 +133,8 @@ char tchar;
 ** Read a character from the VDIP1 
 **
 ** Returns:
-**		Character read if successful
-**		-1 if none available
+**    Character read if successful
+**    -1 if none available
 **
 ** NOTE: Usage is deprecated - use in_vwait to avoid hung
 ** conditions!
@@ -142,17 +142,17 @@ char tchar;
 ********************************************************/
 int in_v()
 {
-	int b;
-	
-	/* check for Data Ready */
-	if ((inp(p_stat) & VRXF) != 0) {
-		/* read the character from the port and return it */
-		b = inp(p_data);
-		return b;
-	}
-	else
-		/* return -1 if no data available */
-		return -1;
+  int b;
+  
+  /* check for Data Ready */
+  if ((inp(p_stat) & VRXF) != 0) {
+    /* read the character from the port and return it */
+    b = inp(p_data);
+    return b;
+  }
+  else
+    /* return -1 if no data available */
+    return -1;
 }
 
 /********************************************************
@@ -166,11 +166,11 @@ int in_v()
 int out_v(c)
 char c;
 {
-	/* Wait for ok to transmit (VTXE high) */
-	while ((inp(p_stat) & VTXE) == 0)
-		;
-	/* OK to transmit the character */
-	outp(p_data,c);
+  /* Wait for ok to transmit (VTXE high) */
+  while ((inp(p_stat) & VTXE) == 0)
+    ;
+  /* OK to transmit the character */
+  outp(p_data,c);
 }
 
 
@@ -183,30 +183,30 @@ char c;
 ** longer than t seconds.
 **
 ** Returns:
-**		Character read if successful
-**		-1 if timed out
+**    Character read if successful
+**    -1 if timed out
 **
 ********************************************************/
 int in_vwait(t)
 int t;
 {
-	/* start short duration timer */
-	timer(1, t);
-	
-	/* now wait for port activity or timeout */
-	while (timer(0, 0)) {
-		/* check for port activity and if so then read 
-		** the data, break out of the loop and return
-		*/
-		if (inp(p_stat) & VRXF)
-			return inp(p_data);
-	}
+  /* start short duration timer */
+  timer(1, t);
+  
+  /* now wait for port activity or timeout */
+  while (timer(0, 0)) {
+    /* check for port activity and if so then read 
+    ** the data, break out of the loop and return
+    */
+    if (inp(p_stat) & VRXF)
+      return inp(p_data);
+  }
 
-	/* if we fall through it means the number of specified
-	** seconds passed without input activity.  To indicate
-	** this timeout error we return -1
-	*/
-	return -1;
+  /* if we fall through it means the number of specified
+  ** seconds passed without input activity.  To indicate
+  ** this timeout error we return -1
+  */
+  return -1;
 }
 
 /********************************************************
@@ -218,33 +218,33 @@ int t;
 ** Wait no more than t seconds.
 **
 ** Returns:
-**		0	if successful
-**		-1	if timed out
+**    0 if successful
+**    -1  if timed out
 **
 ********************************************************/
 int out_vwait(c,t)
 char c;
 int t;
 {
-	/* start short duration timer */
-	timer(1, t);
-	
-	/* now wait for port activity or timeout */
-	while (timer(0, 0)) {
-		/* check for ok to transmit (VTXE high) and,
-		** if so, then transmit and break out of the
-		** loop with successful return.
-		*/
-		if (inp(p_stat) & VTXE) {
-			outp(p_data,c);
-			return 0;
-		}
-	}
-	/* if we fall through it means the number of specified
-	** seconds passed without input activity.  To indicate
-	** this timeout error we return -1
-	*/
-	return -1;
+  /* start short duration timer */
+  timer(1, t);
+  
+  /* now wait for port activity or timeout */
+  while (timer(0, 0)) {
+    /* check for ok to transmit (VTXE high) and,
+    ** if so, then transmit and break out of the
+    ** loop with successful return.
+    */
+    if (inp(p_stat) & VTXE) {
+      outp(p_data,c);
+      return 0;
+    }
+  }
+  /* if we fall through it means the number of specified
+  ** seconds passed without input activity.  To indicate
+  ** this timeout error we return -1
+  */
+  return -1;
 }
 
 
@@ -259,13 +259,13 @@ int t;
 ********************************************************/
 int vfind_disk()
 {
-	/* If there is a drive available then a \r will cause 
-	** the prompt to come back, so simply send \r and 
-	** then test for a command prompt...
-	*/
-	str_send("\r");
-	
-	return vprompt();
+  /* If there is a drive available then a \r will cause 
+  ** the prompt to come back, so simply send \r and 
+  ** then test for a command prompt...
+  */
+  str_send("\r");
+  
+  return vprompt();
 }
 
 /********************************************************
@@ -279,11 +279,11 @@ int vfind_disk()
 ********************************************************/
 int vpurge()
 {
-	int c;
-	
-	do {
-		c = in_vwait(1);
-	} while (c != -1);
+  int c;
+  
+  do {
+    c = in_vwait(1);
+  } while (c != -1);
 }
 
 /********************************************************
@@ -295,29 +295,29 @@ int vpurge()
 ** and waits up to MAXWAIT for the 'E' to be echoed back.
 **
 ** Returns:
-**		0	Success
-**		-1	Error, timed out or no response
+**    0 Success
+**    -1  Error, timed out or no response
 **
 ********************************************************/
 int vhandshake()
 {
-	int rc;
-	
-	/* Attempt to send an "E" */
-	if (str_send("E\r") == -1)
-		/* time out on send! */
-		rc = -1;
-	else if (str_rdw(linebuff, '\r') == -1)
-		/* time out on reading response! */
-		rc = -1;
-	else if (strcmp(linebuff,"E") != 0)
-		/* wrong response! */
-		rc = -1;
-	else
-		/* success! */
-		rc = 0;
+  int rc;
+  
+  /* Attempt to send an "E" */
+  if (str_send("E\r") == -1)
+    /* time out on send! */
+    rc = -1;
+  else if (str_rdw(linebuff, '\r') == -1)
+    /* time out on reading response! */
+    rc = -1;
+  else if (strcmp(linebuff,"E") != 0)
+    /* wrong response! */
+    rc = -1;
+  else
+    /* success! */
+    rc = 0;
 
-	return rc;
+  return rc;
 }
 
 /********************************************************
@@ -332,30 +332,30 @@ int vhandshake()
 ** any setup commands to initialize the desired settings.
 **
 ** Returns:
-**		0: Normal
-**		-1: Error
+**    0: Normal
+**    -1: Error
 **
 ********************************************************/
 int vinit()
 {
-	int rc;
+  int rc;
 
-	rc = 0;
-	
-	/*first try to talk to the device */
-	if (vsync() == -1)
-		rc = -1;
-	else {
-		/* initialization commands */
-		
-		/* ASCII mode (more friendly) */
-		rc = vipa();
-		/* Close any open file */
-		if (rc == 0)
-			rc = vclf();
-	}
+  rc = 0;
+  
+  /*first try to talk to the device */
+  if (vsync() == -1)
+    rc = -1;
+  else {
+    /* initialization commands */
+    
+    /* ASCII mode (more friendly) */
+    rc = vipa();
+    /* Close any open file */
+    if (rc == 0)
+      rc = vclf();
+  }
 
-	return rc;
+  return rc;
 }
 
 /********************************************************
@@ -367,30 +367,30 @@ int vinit()
 ** state.
 **
 ** Returns:
-**		0 	successful synchronization
-**		-1	can't sync with device
+**    0   successful synchronization
+**    -1  can't sync with device
 **
 ********************************************************/
 int vsync()
 {
-	int i, rc;
-	
-	rc = -1;
-	
-	/* try up to 3 times to sync */
-	for (i=0; i<3; i++) {
-		/* first purge any waiting data */
-		vpurge();
+  int i, rc;
+  
+  rc = -1;
+  
+  /* try up to 3 times to sync */
+  for (i=0; i<3; i++) {
+    /* first purge any waiting data */
+    vpurge();
 
-		/* now attempt two-way communication */
-		if (vhandshake()==0) {
-			/* we're talking! */
-			rc = 0;
-			break;
-		}
-	}
-	
-	return rc;
+    /* now attempt two-way communication */
+    if (vhandshake()==0) {
+      /* we're talking! */
+      rc = 0;
+      break;
+    }
+  }
+  
+  return rc;
 }
 
 /********************************************************
@@ -406,51 +406,51 @@ int vsync()
 ** in 'len'.
 **
 ** Returns:
-**		0: Normal
-**		-1: Error (most likely means file not found)
+**    0: Normal
+**    -1: Error (most likely means file not found)
 **
 ********************************************************/
 int vdirf(s, len)
 char *s;
 long *len;
 {
-	int rc;
-	char *c;
-	static union u_fil flen;
+  int rc;
+  char *c;
+  static union u_fil flen;
 
-	rc = 0;
-	
-	str_send("dir ");
-	str_send(s);
-	str_send("\r");
-	
-	/* first line is always blank, just read it */
-	str_rdw(linebuff, '\r');
-	
-	/* the result will either be the file name or
-	** "Command Failed". if the latter then return error.
-	*/
-	str_rdw(linebuff, '\r');
+  rc = 0;
+  
+  str_send("dir ");
+  str_send(s);
+  str_send("\r");
+  
+  /* first line is always blank, just read it */
+  str_rdw(linebuff, '\r');
+  
+  /* the result will either be the file name or
+  ** "Command Failed". if the latter then return error.
+  */
+  str_rdw(linebuff, '\r');
 
-	if (strcmp(linebuff, CFERROR) == 0) {
-		/* flag an error! */
-		rc = -1;
-	}
-	else {
-		/* skip over file name (to first blank) */
-		for (c=linebuff; ((*c!=' ') && (*c!=0)); c++)
-			;
-		/* read file length as 4 hex values */
-		gethexvals(c, 4, &flen.b[0]);
+  if (strcmp(linebuff, CFERROR) == 0) {
+    /* flag an error! */
+    rc = -1;
+  }
+  else {
+    /* skip over file name (to first blank) */
+    for (c=linebuff; ((*c!=' ') && (*c!=0)); c++)
+      ;
+    /* read file length as 4 hex values */
+    gethexvals(c, 4, &flen.b[0]);
 
-		/* return file size */
-		*len = flen.l;
-		
-		/* success - gobble up the prompt */
-		str_rdw(linebuff, '\r');
-	}
-	
-	return rc;
+    /* return file size */
+    *len = flen.l;
+    
+    /* success - gobble up the prompt */
+    str_rdw(linebuff, '\r');
+  }
+  
+  return rc;
 }
 
 /********************************************************
@@ -466,56 +466,56 @@ long *len;
 ** specified locations, which are passed by reference.
 **
 ** Returns:
-**		0: Normal
-**		-1: Error (most likely means file not found)
+**    0: Normal
+**    -1: Error (most likely means file not found)
 **
 ********************************************************/
 int vdird(s, udate, utime)
 char *s;
 unsigned *udate, *utime;
 {
-	int i, rc;
-	char *c;
-	static union u_fil fdate;
-	static char dates[10];
-	
-	rc = 0;
-	
-	str_send("dirt ");
-	str_send(s);
-	str_send("\r");
-	
-	/* first line is always blank, just read it */
-	str_rdw(linebuff, '\r');
-	
-	/* result will either be the file name followed
-	** by 10 bytes, or "Command Failed".
-	*/
-	str_rdw(linebuff, '\r');
+  int i, rc;
+  char *c;
+  static union u_fil fdate;
+  static char dates[10];
+  
+  rc = 0;
+  
+  str_send("dirt ");
+  str_send(s);
+  str_send("\r");
+  
+  /* first line is always blank, just read it */
+  str_rdw(linebuff, '\r');
+  
+  /* result will either be the file name followed
+  ** by 10 bytes, or "Command Failed".
+  */
+  str_rdw(linebuff, '\r');
 
-	if (strcmp(linebuff, CFERROR) == 0) {
-		/* flag an error! */
-		rc = -1;
-	}
-	else {
-		/* skip over the file name (to first blank) */
-		for (c=linebuff; ((*c!=' ') && (*c!=0)); c++)
-			;
-		/* read all 3 date fields */
-		gethexvals(c, 10, dates);
+  if (strcmp(linebuff, CFERROR) == 0) {
+    /* flag an error! */
+    rc = -1;
+  }
+  else {
+    /* skip over the file name (to first blank) */
+    for (c=linebuff; ((*c!=' ') && (*c!=0)); c++)
+      ;
+    /* read all 3 date fields */
+    gethexvals(c, 10, dates);
 
-		/* last 4 bytes are the modification date */
-		for (i=0; i<4; i++)
-			fdate.b[i] = dates[i+6];
+    /* last 4 bytes are the modification date */
+    for (i=0; i<4; i++)
+      fdate.b[i] = dates[i+6];
 
-		/* return date and time */
-		*utime = fdate.i[0];
-		*udate = fdate.i[1];
-		
-		/* success - gobble up the prompt */
-		str_rdw(linebuff, '\r');
-	}
-	return rc;
+    /* return date and time */
+    *utime = fdate.i[0];
+    *udate = fdate.i[1];
+    
+    /* success - gobble up the prompt */
+    str_rdw(linebuff, '\r');
+  }
+  return rc;
 }
 
 
@@ -526,23 +526,23 @@ unsigned *udate, *utime;
 ** check for "D:\>" prompt. 
 **
 ** Returns:
-**		0 Normal
-**		-1 on error (no prompt or timeout)
+**    0 Normal
+**    -1 on error (no prompt or timeout)
 **
 ********************************************************/
 int vprompt()
 {
 #ifdef DEBUG
-	printf("->vprompt\n");
+  printf("->vprompt\n");
 #endif
 
-	/* check for normal prompt return (return if timeout) */
-	if (str_rdw(linebuff, '\r') == -1)
-		return -1;
-	else if (strcmp(linebuff, PROMPT) != 0 )
-		return -1;
-	else
-		return 0;
+  /* check for normal prompt return (return if timeout) */
+  if (str_rdw(linebuff, '\r') == -1)
+    return -1;
+  else if (strcmp(linebuff, PROMPT) != 0 )
+    return -1;
+  else
+    return 0;
 }
 
 /********************************************************
@@ -555,20 +555,20 @@ int vprompt()
 ** Open a file for reading.
 **
 ** Returns:
-**		0 normal
-**		-1 on error
+**    0 normal
+**    -1 on error
 **
 ********************************************************/
 int vropen(s)
 char *s;
 {
-	/* as a safety measure, close any open file */
-	vclf();
-	
-	str_send("opr ");
-	str_send(s);
-	str_send("\r");
-	return vprompt();
+  /* as a safety measure, close any open file */
+  vclf();
+  
+  str_send("opr ");
+  str_send(s);
+  str_send("\r");
+  return vprompt();
 }
 
 /********************************************************
@@ -582,23 +582,23 @@ char *s;
 ** time/date stamp.
 **
 ** Returns:
-**		0 normal
-**		-1 on error
+**    0 normal
+**    -1 on error
 **
 ********************************************************/
 int vwopen(s)
 char *s;
 {
-	/* as a safety measure, close any open file */
-	vclf();
-	
-	str_send("opw ");
-	str_send(s);
-	str_send(td_string);
-	str_send("\r");
-	
-	/* allow a little extra time if new file */
-	return vprompt();
+  /* as a safety measure, close any open file */
+  vclf();
+  
+  str_send("opw ");
+  str_send(s);
+  str_send(td_string);
+  str_send("\r");
+  
+  /* allow a little extra time if new file */
+  return vprompt();
 }
 
 /********************************************************
@@ -615,12 +615,12 @@ char *s;
 int vseek(p)
 int p;
 {
-	static char fpos[7];
-	
-	str_send("sek ");
-	str_send(itoa(p, fpos));
-	str_send("\r");
-	return vprompt();
+  static char fpos[7];
+  
+  str_send("sek ");
+  str_send(itoa(p, fpos));
+  str_send("\r");
+  return vprompt();
 }
 
 /********************************************************
@@ -638,10 +638,10 @@ int p;
 int vclose(s)
 char *s;
 {
-	str_send("clf ");
-	str_send(s);
-	str_send("\r");
-	return vprompt();
+  str_send("clf ");
+  str_send(s);
+  str_send("\r");
+  return vprompt();
 }
 
 /********************************************************
@@ -658,8 +658,8 @@ char *s;
 ********************************************************/
 int vclf()
 {
-	str_send("clf\r");
-	return vprompt();
+  str_send("clf\r");
+  return vprompt();
 }
 
 /********************************************************
@@ -676,8 +676,8 @@ int vclf()
 ********************************************************/
 int vipa()
 {
-	str_send("ipa\r");
-	return vprompt();
+  str_send("ipa\r");
+  return vprompt();
 }
 
 /********************************************************
@@ -700,39 +700,39 @@ int vipa()
 ** the command failed.
 **
 ** Returns:
-**		0 on Success
-**		-1 on Error
+**    0 on Success
+**    -1 on Error
 **
 ********************************************************/
 int vread(buff, n)
 char *buff;
 int n;
 {
-	int i;
-	char *nxt;
-	static char fsize[7];
-	
+  int i;
+  char *nxt;
+  static char fsize[7];
+  
 #ifdef DEBUG
-	printf("->vread\n");
+  printf("->vread\n");
 #endif
-	/* send read from file (RDF) command */
-	str_send("rdf ");
-	str_send(itoa(n, fsize));
-	str_send("\r");
-	
-	/* immediately capture the result in the buffer */
-	nxt=buff;
-	for (i=0; i<n ; i++) {
-		/* wait for RX flag, then read the byte */
-		while ((inp(p_stat) & VRXF) == 0)
-			; /* wait... */
-		*nxt++ = inp(p_data);
-	}
+  /* send read from file (RDF) command */
+  str_send("rdf ");
+  str_send(itoa(n, fsize));
+  str_send("\r");
+  
+  /* immediately capture the result in the buffer */
+  nxt=buff;
+  for (i=0; i<n ; i++) {
+    /* wait for RX flag, then read the byte */
+    while ((inp(p_stat) & VRXF) == 0)
+      ; /* wait... */
+    *nxt++ = inp(p_data);
+  }
 #ifdef DEBUG
     printf("%d bytes read\n", n);
 #endif
 
-	return vprompt();
+  return vprompt();
 }
 
 /********************************************************
@@ -751,30 +751,30 @@ int n;
 ** discarded
 **
 ** Returns:
-**		0 on Success
-**		-1 on Error
+**    0 on Success
+**    -1 on Error
 **
 ********************************************************/
 int vwrite(buff, n)
 char *buff;
 int n;
 {
-	int i, rc;
-	static char wsize[7];
+  int i, rc;
+  static char wsize[7];
 
-	rc = 0;
-	
-	/* write to file (WRF) command */
-	str_send("wrf ");
-	str_send(itoa(n, wsize));
-	str_send("\r");
-	
-	/* now output the n bytes to the device */
-	for (i=0; i<n; i++) {
-		out_v(*buff++);
-	}
+  rc = 0;
+  
+  /* write to file (WRF) command */
+  str_send("wrf ");
+  str_send(itoa(n, wsize));
+  str_send("\r");
+  
+  /* now output the n bytes to the device */
+  for (i=0; i<n; i++) {
+    out_v(*buff++);
+  }
 
-	return vprompt();
+  return vprompt();
 }
 
 /********************************************************
@@ -786,32 +786,32 @@ int n;
 ** at a time.
 **
 ** Return:
-**	0	= success
-**	-1	= fail
+**  0 = success
+**  -1  = fail
 **
 ********************************************************/
 int vcd(dir)
 char *dir;
 {
-	int rc;
-	
-	rc = 0;
-	
-	str_send("cd ");
-	str_send(dir);
-	str_send("\r");
-	
-	/* The result will either be the Prompt or an error
-	** message. If the latter then return error.
-	*/
-	str_rdw(linebuff, '\r');
+  int rc;
+  
+  rc = 0;
+  
+  str_send("cd ");
+  str_send(dir);
+  str_send("\r");
+  
+  /* The result will either be the Prompt or an error
+  ** message. If the latter then return error.
+  */
+  str_rdw(linebuff, '\r');
 
-	if (strcmp(linebuff, PROMPT) != 0) {
-		printf("CD %s: %s\n", dir, linebuff);
-		rc = -1;
-	}
-	
-	return rc;
+  if (strcmp(linebuff, PROMPT) != 0) {
+    printf("CD %s: %s\n", dir, linebuff);
+    rc = -1;
+  }
+  
+  return rc;
 }
 
 /********************************************************
@@ -825,8 +825,8 @@ char *dir;
 ********************************************************/
 int vcdroot()
 {
-	while(vcdup() == 0)
-		;
+  while(vcdup() == 0)
+    ;
 }
 
 /********************************************************
@@ -837,27 +837,27 @@ int vcdroot()
 ** the "CD .." command
 **
 ** Returns:
-**		0 if success
-**		-1 if fail (i.e. at "root" level)
+**    0 if success
+**    -1 if fail (i.e. at "root" level)
 **
 ********************************************************/
 int vcdup()
 {
-	int rc;
-	
-	rc = 0;
-	
-	str_send("cd ..\r");
-	
-	/* The result will either be the Prompt or
-	** "Command Failed". If the latter then return error.
-	*/
-	str_rdw(linebuff, '\r');
+  int rc;
+  
+  rc = 0;
+  
+  str_send("cd ..\r");
+  
+  /* The result will either be the Prompt or
+  ** "Command Failed". If the latter then return error.
+  */
+  str_rdw(linebuff, '\r');
 
-	if (strcmp(linebuff, CFERROR) == 0) {
-		/* flag an error! */
-		rc = -1;
-	}
-	
-	return rc;
+  if (strcmp(linebuff, CFERROR) == 0) {
+    /* flag an error! */
+    rc = -1;
+  }
+  
+  return rc;
 }

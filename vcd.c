@@ -21,6 +21,11 @@
 **
 ** L80 vcd,vinc,vutil,pio,fprintf,flibrary/s,stdlib/s,clibrary/s,vcd/n/e
 **
+** Our convention is to save all files with CP/M style
+** line endings (CR-LF). The HDOS version of C/80 is picky
+** and wants to see just LF (which is the HDOS standard line ending,
+** therefore the CR characters must be stripped out before compilation.
+** A separate STRIP.C program provides this capability.
 **
 ** Glenn Roberts
 ** 31 January 2022
@@ -49,79 +54,79 @@ dosw(argc, argv)
 int argc;
 char *argv[];
 {
-	int i;
-	char *s;
+  int i;
+  char *s;
 
-	/* Set default values */
-	p_data = VDATA;
-	p_stat = VSTAT;
-	
-	/* process right to left */
-	for (i=argc; i>0; i--) {
-		s = argv[i];
-		if (*s++ == '-') {
-			/* have a switch! */
-			switch (*s) {
-			case 'P':
-				++s;
-				p_data = aotoi(s);
-				p_stat = p_data + 1;
-			    break;
-			default:
-			    printf("Invalid switch %c\n", *s);
-				break;
-			}
-		}
-	}
+  /* Set default values */
+  p_data = VDATA;
+  p_stat = VSTAT;
+  
+  /* process right to left */
+  for (i=argc; i>0; i--) {
+    s = argv[i];
+    if (*s++ == '-') {
+      /* have a switch! */
+      switch (*s) {
+      case 'P':
+        ++s;
+        p_data = aotoi(s);
+        p_stat = p_data + 1;
+          break;
+      default:
+          printf("Invalid switch %c\n", *s);
+        break;
+      }
+    }
+  }
 }
 
 main(argc,argv)
 int argc;
 char *argv[];
-{	
-	char *d, *s;
-	int slash;
-	
-	/* set globals 'os' and 'osver' to direct use of time and
-	** date functions
-	*/
-	getosver();
+{ 
+  char *d, *s;
+  int slash;
+  
+  /* set globals 'os' and 'osver' to direct use of time and
+  ** date functions
+  */
+  getosver();
 
-	/* process any switches */
-	dosw(argc, argv);
+  /* process any switches */
+  dosw(argc, argv);
 
-	printf("VCD v4 [%o]\n", p_data);
-				
-	if (vinit() == -1)
-		printf("Error initializing VDIP-1 device!\n");
-	else if (vfind_disk() == -1)
-		printf("No flash drive found!\n");
-	else if ((argc < 2) || (index(argv[1], "\\") != -1)) {
-		printf("Usage: vcd <directory> <-pxxx>\n");
-		printf("Use forward slash (/) for directory specification\n");
-		printf("\txxx is USB optional port in octal (default is %o)\n", VDATA);
-	}
-	else {
-		/* save a copy */
-		strncpy(dircopy, argv[1], 80);
-		
-		d = argv[1];
-		/* if rooted path start at /, otherwise relative path */
-		if (*d == '/') {
-			vcdroot();
-			++d;
-		}
-		slash = index(d, "/");
-		while (slash != -1) {
-			s = d;
-			d += slash;
-			*d++ = NUL;
-			vcd(s);
-			slash = index(d, "/");
-		}
-		if (strlen(d) > 0)
-			vcd(d);
-		
-		printf("USB:%s\n", dircopy);
-	}
+  printf("VCD v4 [%o]\n", p_data);
+        
+  if (vinit() == -1)
+    printf("Error initializing VDIP-1 device!\n");
+  else if (vfind_disk() == -1)
+    printf("No flash drive found!\n");
+  else if ((argc < 2) || (index(argv[1], "\\") != -1)) {
+    printf("Usage: vcd <directory> <-pxxx>\n");
+    printf("Use forward slash (/) for directory specification\n");
+    printf("\txxx is USB optional port in octal (default is %o)\n", VDATA);
+  }
+  else {
+    /* save a copy */
+    strncpy(dircopy, argv[1], 80);
+    
+    d = argv[1];
+    /* if rooted path start at /, otherwise relative path */
+    if (*d == '/') {
+      vcdroot();
+      ++d;
+    }
+    slash = index(d, "/");
+    while (slash != -1) {
+      s = d;
+      d += slash;
+      *d++ = NUL;
+      vcd(s);
+      slash = index(d, "/");
+    }
+    if (strlen(d) > 0)
+      vcd(d);
+    
+    printf("USB:%s\n", dircopy);
+  }
 }
