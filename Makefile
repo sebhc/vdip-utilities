@@ -1,6 +1,7 @@
 # For use with vcpm, SWTW C/80, and DRI RMAC/LINK.
 #
 # See README.Makefile
+RELEASE = 4.0
 
 .PRECIOUS: %.asm %.h %.rel h%.asm %.bin h%.c
 
@@ -21,6 +22,7 @@ export CPMDrive_L = $(PWD)/c-hdos
 export CPMDefault = c:
 
 HDOSABS = $(CPMDrive_L)/hdosabs
+HLABEL = $(shell date +'VDIP $(RELEASE) HDOS %d-%b-%Y')
 
 TARGETS = vcd.com vtalk.com vdir.com vget.com vput.com vpip.com
 DEPS = vutil.rel pio.rel
@@ -39,7 +41,7 @@ $(BLD)/vdip-cpm.h8d: __FRC__
 
 $(BLD)/vdip-hdos.h8d: __FRC__
 	rm -f $@
-	$(FMT) hdos lab="VDIP 4.0 HDOS" files=$(CPMDrive_E) $@ bare z17 ss sd
+	$(FMT) hdos lab="$(HLABEL)" files=$(CPMDrive_E) $@ bare z17 ss sd
 endif
 
 all: cpm hdos
