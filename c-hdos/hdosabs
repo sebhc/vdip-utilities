@@ -1,0 +1,17 @@
+#!/bin/bash
+# HDOS .ABS header, we always use 2280H (load and entry).
+# We only need to compute the length.
+F1='\\xFF\\x00\\x80\\x22\\x%02x\\x%02x\\x80\\x22'
+
+if [[ ! -f ${1} ]]; then
+	echo "Usage: ${0} <bin-file>" >&2
+	echo "       .ABS output to stdout" >&2
+	exit 1
+fi
+
+len=$(ls -l ${1}|awk '{print $5;}')
+((lh=len>>8))
+((ll=len&255))
+printf -v FMT "${F1}" $ll $lh 
+printf ${FMT}
+cat ${1}

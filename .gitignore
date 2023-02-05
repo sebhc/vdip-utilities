@@ -1,5 +1,7 @@
 build/
 fprintf.h
 printf.h
+hcommand.c
 *.rel
 *.asm
+*.bin
