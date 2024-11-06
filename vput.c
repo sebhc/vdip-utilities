@@ -1,5 +1,5 @@
 /********************************************************
-** vput - Version 4 for CP/M and  HDOS
+** vput - Version 4.1 for CP/M and  HDOS
 **
 ** This program copies one or more files from CP/M or HDOS to a
 ** USB flash device. Wild card copies are supported. VPUT may be
@@ -16,7 +16,7 @@
 **
 ** Compiled with Software Toolworks C/80 V. 3.1.
 **
-** L80 vput,vinc,vutil,pio,fprintf,command,flibrary/s,stdlib/s,clibrary/s,vput/n/e
+** L80 vput,vinc,vutil,pio,fprintf,scanf,command,flibrary/s,stdlib/s,clibrary/s,vput/n/e
 **
 ** This code uses ifndef to insert calls to CtlCk(), which 
 ** is necessary in CP/M to check for CTRL-C interrupts, and 
@@ -35,6 +35,9 @@
 **
 ** Glenn Roberts
 ** 1 February 2022
+**
+** 27 October 2024 - added ability to read port number from
+** configuration file. Updated to V4.1.
 **
 ********************************************************/
 #include "fprintf.h"
@@ -129,11 +132,6 @@ char *argv[];
 {
   int i;
   char *s;
-
-  /* Set default values */
-  p_data = VDATA;
-  p_stat = VSTAT;
-
   
   /* process right to left */
   for (i=argc-1; i>1; i--) {
@@ -161,18 +159,34 @@ char *argv[];
   int i, offset;
   char *srcfile, *destfile;
   
+  printf("VPUT v%s\n", VERSION);
+
+  /* Set default values */
+  p_data = VDATA;
+  p_stat = VSTAT;
+	
   /* set globals 'os' and 'osver' to direct use of time and
   ** date functions
   */
   getosver();
+
+	/* check if user has a file specifying the port. For
+	** HDOS we can provide the location of this program executable
+	** but for CP/M we can only suggest looking on A:
+	*/
+#ifdef HDOS
+	chkport("SY0:");
+#else
+	chkport("A:");
+#endif
 
   command(&argc, &argv);
 
   /* process any switches */
   dosw(argc, argv);
 
-  printf("VPUT v4 [%o]\n", p_data);
-      
+  printf("Using port: [%o]\n", p_data);
+
   if (argc < 2) {
     printf("Usage: VPUT file {file} {file} ... <-pxxx>\n");
     printf("\tlocal is local drive and/or filespec\n");

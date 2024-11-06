@@ -12,6 +12,8 @@
 #define EXTERN extern
 #endif
 
+#define	VERSION	"4.1"
+
 /* Define either HDOS or CPM here to cause appropriate 
 ** routines to be compiled.  If none is defined CPM is 
 ** assumed. Your code must call routine getosver() to 
@@ -125,9 +127,15 @@ struct scbstruct {
 #define TICCNT  0x000B
 #endif
 
+/* if file PFILE exists it contains an optional
+** port number to be used.
+*/
+#define	PFILE	"VPORT.DAT"
+
 /* OS calls */
 int getosver();
 int bdoshl();
+int chkport();
 
 /* format conversion */
 int btod();

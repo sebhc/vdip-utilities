@@ -1,8 +1,6 @@
 /********************************************************
 ** vutil.c
 **
-** Version 4.0 (beta)
-**
 ** This library contains a set of general purpose utility
 ** routines which support the various needs for accessing
 ** the FTDI VDIP device. Routines cover four broad types
@@ -22,8 +20,11 @@
 **  Glenn Roberts
 **  3 January 2022
 **
+**  24 October 2024 - added chkport()
+**
 ********************************************************/
 #include "fprintf.h"
+#include "scanf.h"
 #include "vinc.h"
 #include "vutil.h"
 
@@ -753,4 +754,67 @@ unsigned utime;
     am_pm = "AM";
   
   printf("%2d:%02d %s", hr, min, am_pm);
+}
+
+/* chkport - Look for a specially-named file (see definition
+** of PFILE) and, if it exists, open it and read the user-specified
+** port number (supplied in octal format).
+**
+** Here are the rules:
+**
+** 1) try to just open PFILE without any disk qualifier. In CP/M
+** this will try the current default drive; in HDOS this will try
+** SY0:
+** 2) if first attempt fails then try the following: the string
+** that was passed should contain either a drive qualifier or
+** a fully qualified name of the invoking program. strip off the
+** drive name and colon and append PFILE and try to open that.
+**
+** If these fail, do nothing, otherwise set the globals
+** p_data and p_stat are set using the specified port.
+*/
+int chkport(s)
+char *s;
+{
+	int pch, pval, iscan, fok;
+	static char pfname[20];
+
+  fok = FALSE;
+	
+	strcpy(pfname, PFILE);
+	if ((pch = fopen(pfname, "r")) != 0) {
+		/* option 1 - success! */
+		fok = TRUE;
+	}
+	else {
+		/* try option 2. find the drive prefix from the string
+		** that was passed and then append PFILE to that and
+		** try to open it
+		*/
+		strcpy(pfname, s);
+		if ((iscan = index(pfname, ":")) != -1) {
+			/* found a ":" - skip past it and then
+			** append PFILE to create the fully-qualified
+			** file name
+			*/
+			++iscan;
+			strcpy(pfname+iscan, PFILE);
+
+			/* now try to open it ... */
+			if ((pch = fopen(pfname, "r")) != 0) {
+				/* option 2 - success! */
+				fok = TRUE;
+			}
+		}
+	}
+	
+	if (fok) {
+		/* file found and opened - read the port number */
+		fscanf(pch, "%o\n", &pval);
+		printf("User-specified port: [%03o] in file %s\n", pval, pfname);
+		p_data = pval;
+		p_stat = p_data + 1;
+
+		fclose(pch);
+	}
 }

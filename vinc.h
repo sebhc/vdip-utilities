@@ -69,3 +69,4 @@ int vwrite();
 int vcd();
 int vcdroot();
 int vcdup();
+int vmkd();

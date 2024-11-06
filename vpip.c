@@ -1,5 +1,5 @@
 /********************************************************
-** vpip - Version 4 for CP/M and HDOS
+** vpip - Version 4.1 for CP/M and HDOS
 **
 ** This program implements a PIP-like (Peripheral Interchange
 ** Program) interface to the Vinculum VDIP-1 device for
@@ -55,7 +55,7 @@
 **
 ** Typical link command:
 **
-** L80 vpip,vinc,vutil,pio,fprintf,flibrary/s,stdlib/s,clibrary/s,vpip/n/e
+** L80 vpip,vinc,vutil,pio,fprintf,scanf,flibrary/s,stdlib/s,clibrary/s,vpip/n/e
 **
 ** This code uses ifndef to insert a call to CtlCk(), which 
 ** is necessary in CP/M to check for CTRL-C interrupts. This
@@ -73,6 +73,9 @@
 **
 **  Glenn Roberts
 **  3 February 2022
+**
+** 27 October 2024 - added ability to read port number from
+** configuration file. Fixed bugs in CP/M. Updated to V4.1.
 **
 ********************************************************/
 #include "fprintf.h"
@@ -335,6 +338,8 @@ char *device;
 ** on the specified device, then populate the directory
 ** array, dynamically allocating memory for each entry.
 ** Device is the drive identifier, e.g. "A", "B", etc.
+** Since CP/M uses the 8th bit of certain file name
+** entries for special purposes we mask that off here.
 */
 int bldldir(device)
 char *device;
@@ -376,16 +381,17 @@ char *device;
       /* copy pertinent CP/M fields to our entry and
       ** set other fields to defaults.  In our directory
       ** structure we pad with NUL not SPACE so make
-      ** that adjustment here...
+      ** that adjustment here. This is also where we
+			** mask out the 8th bit by ANDing with 0x7F.
       */
       for (j=0; j<8; j++) {
-        c = ourentry->cname[j];
+        c = ourentry->cname[j] & 0x7F;
         entry->name[j] = (c == SPACE) ? NUL : c;
       }
       entry->name[8] = NUL;
       
       for (j=0; j<3; j++) {
-        c = ourentry->cext[j];
+        c = ourentry->cext[j] & 0x7F;
         entry->ext[j] = (c == SPACE) ? NUL : c;
       }
       entry->ext[3] = NUL;
@@ -435,7 +441,9 @@ int l;
 /* dstexpand - this routine takes a directory entry (file name
 ** and extension) and then uses the destination filespec to
 ** create a destination file name, which is returned as a
-** string.
+** string. As part of the expansion we check for the legality
+** of characters in the file name (HDOS and CP/M have different
+** rules).
 */
 int dstexpand(entry, dspec, dname)
 struct finfo *entry;
@@ -454,10 +462,10 @@ char *dname;
     s = dspec->fname[i];
     if (wild || (s == '?')) {
       c = entry->name[i];
-      if (isalpha(c) || isdigit(c))
+      if (islegal(c,i))
         *d++ = c;
     }
-    else if (isalpha(s) || isdigit(s))
+    else if (islegal(s,i))
       *d++ = s;
   }
 
@@ -467,13 +475,13 @@ char *dname;
     s = dspec->fext[i];
     if (wild || (s == '?')) {
       c = entry->ext[i];
-      if (isalpha(c) || isdigit(c)) {
+      if (islegal(c,i+8)) {
         if (i == 0)
           *d++ = '.';
         *d++ = c;
       }
     }
-    else if (isalpha(s) || isdigit(s)) {
+    else if (islegal(s,i+8)) {
       if (i == 0)
         *d++ = '.';
       *d++ = s;
@@ -483,6 +491,40 @@ char *dname;
   /* make sure string is terminated! */
   *d = NUL;
 }
+
+/* islegal - examines the provided character and
+** returns TRUE if it is an allowable filename
+** character. The rules are different for HDOS and
+** CP/M. p is the position of the character in
+** the 11-character file name. in HDOS the first
+** character (p==0) must be a letter.
+*/
+int islegal(c,p)
+char c;
+int p;
+{
+	int ok;
+	char *ck;
+	static char okcpm[] = "_$!%-@`^~#&{}'()";
+	
+	ok = (isalpha(c) || isdigit(c)) ? TRUE : FALSE;
+#ifdef HDOS
+  /* in HDOS file names must start with a letter */
+  if ((p==0) && !isalpha(c))
+		ok = FALSE;
+#else
+  /* CP/M allows more characters ...*/
+	for (ck=okcpm; *ck != NUL; ++ck) {
+		if (*ck == c) {
+			ok = TRUE;
+			break;
+		}
+	}
+#endif
+
+	return ok;
+}
+
 
 /* dirstr - return a directory entry as a string 
 ** this routine essentially concatenates the name
@@ -1243,10 +1285,6 @@ char *argv[];
   int i;
   char *s;
   
-  /* default port values */
-  p_data = VDATA;
-  p_stat = VSTAT;
-  
   /* default flag settings */
   f_list = FALSE;
 
@@ -1280,15 +1318,31 @@ char *argv[];
 {
   int l;
 
+  printf("VPIP v%s\n", VERSION);
+
+  /* default port values */
+  p_data = VDATA;
+  p_stat = VSTAT;
+  
   /* set globals 'os' and 'osver' to direct use of time and
   ** date functions
   */
   getosver();
-  
+	
+	/* check if user has a file specifying the port. For
+	** HDOS we can provide the location of this program executable
+	** but for CP/M we can only suggest looking on A:
+	*/
+#ifdef HDOS
+	chkport("SY0:");
+#else
+	chkport("A:");
+#endif
+
   /* process any switches */
   dosw(argc, argv);
 
-  printf("VPIP v4 [%o]\n",  p_data);
+  printf("Using port: [%o]\n", p_data);
 
   if (argc < 2) {
     /* interactive mode */

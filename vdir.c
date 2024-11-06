@@ -1,5 +1,5 @@
 /********************************************************
-** vdir - Version 4 for CP/M and HDOS
+** vdir - Version 4.1 for CP/M and HDOS
 **
 ** This program reads and prints the directory information
 ** for a USB flash device. It lists the file names along with
@@ -17,12 +17,12 @@
 ** Compiled with Software Toolworks C/80 V. 3.1 with support for
 ** floats and longs.  Typical link statement:
 **
-** L80 vdir,vinc,vutil,pio,fprintf,flibrary/s,stdlib/s,clibrary/s,vdir/n/e
+** L80 vdir,vinc,vutil,pio,fprintf,scanf,flibrary/s,stdlib/s,clibrary/s,vdir/n/e
 **
 ** This code uses ifndef to insert a call to CtlCk(), which 
 ** is necessary in CP/M to check for CTRL-C interrupts. This
 ** is not necessary for HDOS. If HDOS is not defined then the
-** compiler will insert the CtrlCk() call. To compile for HDOS
+** compiler will insert the CtlCk() call. To compile for HDOS
 ** you should therfore use the command:
 **
 **    C -qHDOS=1 VDIR
@@ -34,6 +34,10 @@
 ** A separate STRIP.C program provides this capability.
 **
 ** Glenn Roberts 1 February 2022
+**
+** 27 October 2024 - added ability to read port number from
+** configuration file. Changed default to "brief" and added
+** "-L" switch for "long" output. Updated to V4.1.
 **
 ********************************************************/
 #include "fprintf.h"
@@ -209,10 +213,7 @@ char *argv[];
   int i;
   char *s;
 
-  /* Set default values */
-  p_data = VDATA;
-  p_stat = VSTAT;
-  brief = FALSE;
+  brief = TRUE;
   
   /* process right to left */
   for (i=argc; i>0; i--) {
@@ -225,8 +226,8 @@ char *argv[];
         p_data = aotoi(s);
         p_stat = p_data + 1;
           break;
-      case 'B':
-        brief = TRUE;
+      case 'L':
+        brief = FALSE;
         break;
       default:
           printf("Invalid switch %c\n", *s);
@@ -271,15 +272,31 @@ char *argv[];
 { 
   int i;
 
+  printf("VDIR v%s\n", VERSION);
+
+  /* Set default values */
+  p_data = VDATA;
+  p_stat = VSTAT;
+	
   /* set globals 'os' and 'osver' to direct use of time and
   ** date functions
   */
   getosver();
-  
+
+	/* check if user has a file specifying the port. For
+	** HDOS we can provide the location of this program executable
+	** but for CP/M we can only suggest looking on A:
+	*/
+#ifdef HDOS
+	chkport("SY0:");
+#else
+	chkport("A:");
+#endif
+
   /* process any switches */
   dosw(argc, argv);
 
-  printf("VDIR v4 [%o]\n", p_data);
+  printf("Using port: [%o]\n", p_data);
         
   if (vinit() == -1)
     printf("Error initializing VDIP-1 device!\n");

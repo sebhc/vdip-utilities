@@ -1,5 +1,5 @@
 /********************************************************
-** vtalk - Version 4 for CP/M3 and HDOS
+** vtalk - Version 4.1 for CP/M3 and HDOS
 **
 ** USAGE: vtalk {-pxxx}
 **
@@ -25,7 +25,7 @@
 **    printf, inp, outp
 **
 **  Suggested link statement:
-**    l80 vtalk,printf,pio,clibrary/s,vtalk/n/e
+**  L80 vtalk,vinc,vutil,pio,fprintf,scanf,flibrary/s,stdlib/s,clibrary/s,vtalk/n/e
 **
 **  This code uses ifdef to choose between HDOS and CP/M
 **  I/O calls. if HDOS is defined then the HDOS code will
@@ -53,24 +53,18 @@
 **  Glenn Roberts
 **  28 January 2022
 **
+** 27 October 2024 - added ability to read port number from
+** configuration file. Updated to V4.1.
+**
 ********************************************************/
-#include "printf.h"
+#include "fprintf.h"
 
-#define FALSE 0
-#define TRUE  1
+/* ensure globals live here */
+#define EXTERN
+#include "vutil.h"
+#include "vinc.h"
 
 #define CTLC  3   /* control-C to exit loop */
-
-/* FTDI VDIP ports and bits */
-#define VDATA 0331  /* FTDI Data Port */
-#define VSTAT 0332  /* FTDI Status Port */
-#define VTXE  004   /* TXE# when hi ok to write */
-#define VRXF  010   /* RXF# when hi data avail  */
-
-/* USB i/o ports */
-int p_data;   /* USB data port */
-int p_stat;   /* USB status port */
-
 
 #ifndef HDOS
 /************************************
@@ -231,19 +225,6 @@ int in_vdip()
     return -1;
 }
 
-/* aotoi - convert octal string to an integer 
-*/
-int aotoi(s)
-char s[];
-{
-  int i, n;
-  
-  n = 0;
-  for (i = 0; s[i] >= '0' && s[i] <= '7'; ++i)
-  n = 8 * n + s[i] - '0';
-  return(n);
-}
-
 /* dosw - process '-' switches and arguments
 */
 dosw(argc, argv)
@@ -278,15 +259,27 @@ char *argv[];
 {
   static int c, done, cr_pending;
 
+  printf("VTALK v%s\n", VERSION);
+
   /* default port values */
   p_data = VDATA;
   p_stat = VSTAT;
+
+	/* check if user has a file specifying the port. For
+	** HDOS we can provide the location of this program executable
+	** but for CP/M we can only suggest looking on A:
+	*/
+#ifdef HDOS
+	chkport("SY0:");
+#else
+	chkport("A:");
+#endif
 
   /* process any switches */
   dosw(argc, argv);
 
   /* print welcome */
-  printf("VTALK v4 [%o]\n", p_data);
+  printf("Using port: [%o]\n\n", p_data);
   printf("Enter Vinculum commands, Ctrl-C to exit\n\n");
 
   

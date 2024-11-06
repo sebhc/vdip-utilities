@@ -1,25 +1,18 @@
 /********************************************************
-** vcd - Version 4.1 for CP/M and HDOS
+** vmd - Version 4.1 for CP/M and HDOS
 **
-** This program implements a simple Change Directory app to change
-** the current directory on the attached USB flash drive.
+** This program lets the user create a new sub-directory
+** under the current directory on the USB device.
 **
-** Usage:  vcd path
+** Usage:  vmd directory
 **
-** It changes the directory to the value specified on
-** the command line.  Unix-style forward slash characters ("/")
-** are used to indicate directory levels.  If the specified
-** directory path begins with '/' it is taken as an absolute
-** path (rooted), otherwise the path is taken as relative to
-** the current directory.
-**
-** This code is OS agnostic - should compile and run on
+** This code is OS-agnostic - should compile and run on
 ** HDOS and all versions of CP/M.
 **
 ** Compiled with Software Toolworks C/80 V. 3.1 with support for
 ** floats and longs.  Typical link statement:
 **
-** L80 vcd,vinc,vutil,pio,fprintf,scanf,flibrary/s,stdlib/s,clibrary/s,vcd/n/e
+** L80 vmd,vinc,vutil,pio,fprintf,scanf,flibrary/s,stdlib/s,clibrary/s,vmd/n/e
 **
 ** Our convention is to save all files with CP/M style
 ** line endings (CR-LF). The HDOS version of C/80 is picky
@@ -28,10 +21,7 @@
 ** A separate STRIP.C program provides this capability.
 **
 ** Glenn Roberts
-** 31 January 2022
-**
-** 27 October 2024 - added ability to read port number from
-** configuration file. Updated to V4.1.
+** 25 October 2024
 **
 ********************************************************/
 #include "fprintf.h"
@@ -40,8 +30,6 @@
 #define EXTERN
 #include "vutil.h"
 #include "vinc.h"
-
-char dircopy[80];
 
 /* dosw - process any switches on the command line.
 ** Switches are preceded by "-".  If a numeric value
@@ -83,10 +71,7 @@ main(argc,argv)
 int argc;
 char *argv[];
 { 
-  char *d, *s;
-  int slash;
-
-  printf("VCD v%s\n", VERSION);
+  printf("VMD v%s\n", VERSION);
 
   /* Set default values */
   p_data = VDATA;
@@ -117,31 +102,13 @@ char *argv[];
   else if (vfind_disk() == -1)
     printf("No flash drive found!\n");
   else if ((argc < 2) || (index(argv[1], "\\") != -1)) {
-    printf("Usage: vcd <directory> <-pxxx>\n");
-    printf("Use forward slash (/) for directory specification\n");
+    printf("Usage: vmd <directory> <-pxxx>\n");
     printf("\txxx is USB optional port in octal (default is %o)\n", VDATA);
   }
   else {
-    /* save a copy */
-    strncpy(dircopy, argv[1], 80);
-    
-    d = argv[1];
-    /* if rooted path start at /, otherwise relative path */
-    if (*d == '/') {
-      vcdroot();
-      ++d;
-    }
-    slash = index(d, "/");
-    while (slash != -1) {
-      s = d;
-      d += slash;
-      *d++ = NUL;
-      vcd(s);
-      slash = index(d, "/");
-    }
-    if (strlen(d) > 0)
-      vcd(d);
-    
-    printf("USB:%s\n", dircopy);
+    if (vmkd(argv[1] == 0))
+			printf("Directory %s created\n", argv[1]);
+		else
+			printf("Error creating directory %s\n", argv[1]);
   }
 }

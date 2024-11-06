@@ -90,10 +90,11 @@ char *s;
 ** device but detect hung conditions by monitoring the time.
 ** Read and consume characters up to and including the character 
 ** specified in 'tchar', but wait no longer than the globally
-** specified maximum time MAXWAIT for each byte.
+** specified maximum time MAXWAIT for each byte. The 'tchar'
+** character is replaced with a terminating NUL.
 **
 ** Returns:
-**    0 if read was successful
+**    string length if read was successful
 **    -1 if read timed out.
 **
 ********************************************************/
@@ -101,11 +102,12 @@ int str_rdw(s, tchar)
 char *s;
 char tchar;
 {
-  int c, rc;
+  int c, rc, slen;
   int timedout;
   
   timedout = FALSE;
   rc = 0;
+	slen = 0;
 
   do {
     if((c = in_vwait(MAXWAIT)) == -1)
@@ -113,15 +115,19 @@ char tchar;
     else {
       /* got a byte, check for end */
       if (c == tchar)
-        c = 0;
+        c = NUL;
       *s++ = c;
+			slen++;
     }
   } while ((c != 0) && (!timedout));
   if (timedout) {
     /* terminate the string and exit */
-    *s = 0;
+    *s = NUL;
     rc = -1;
   }
+	else
+		/* don't count the terminating NUL */
+		rc = slen - 1;
 
   return rc;
 }
@@ -485,13 +491,19 @@ unsigned *udate, *utime;
   str_send(s);
   str_send("\r");
   
-  /* first line is always blank, just read it */
-  str_rdw(linebuff, '\r');
+	/* Note: there is a difference in how the "DIRT" command
+	** responds between the older 03.69 VDAP and the newer
+	** VDAP2 (2.0.2-SP3) firmware. The older firmware first
+	** responds with a blank line here, the newer one does not.
+  ** So we need to handle either case by checking for an
+	** empty string and then reading another if need be.
+	*/
+  if (str_rdw(linebuff, '\r') == 0)
+		str_rdw(linebuff, '\r');
   
   /* result will either be the file name followed
   ** by 10 bytes, or "Command Failed".
   */
-  str_rdw(linebuff, '\r');
 
   if (strcmp(linebuff, CFERROR) == 0) {
     /* flag an error! */
@@ -856,6 +868,47 @@ int vcdup()
 
   if (strcmp(linebuff, CFERROR) == 0) {
     /* flag an error! */
+    rc = -1;
+  }
+  
+  return rc;
+}
+
+/********************************************************
+**
+** vmkd
+**
+** Create the specified sub-directory in the current
+** directory. Sets the time/date stamp based on current
+** system time/date.
+**
+** Return:
+**  0 = success
+**  -1  = fail
+**
+********************************************************/
+int vmkd(dir)
+char *dir;
+{
+  int rc;
+  
+  rc = 0;
+  
+  /* first set up the file date for MKD command */
+	settd(FALSE);
+	
+  str_send("mkd ");
+  str_send(dir);
+  str_send(td_string);
+  str_send("\r");
+  
+  /* The result will either be the Prompt or an error
+  ** message. If the latter then return error.
+  */
+  str_rdw(linebuff, '\r');
+
+  if (strcmp(linebuff, PROMPT) != 0) {
+    printf("MKD %s: %s\n", dir, linebuff);
     rc = -1;
   }
   
