@@ -33,6 +33,8 @@
 ** 27 October 2024 - added ability to read port number from
 ** configuration file. Updated to V4.1.
 **
+** 26 January 2025 - improved error handling
+**
 ********************************************************/
 #include "fprintf.h"
 
@@ -41,7 +43,8 @@
 #include "vutil.h"
 #include "vinc.h"
 
-char dircopy[80];
+/* array used to track successful vcd commands */
+char dtrack[80];
 
 /* dosw - process any switches on the command line.
 ** Switches are preceded by "-".  If a numeric value
@@ -84,7 +87,7 @@ int argc;
 char *argv[];
 { 
   char *d, *s;
-  int slash;
+  int slash, err;
 
   printf("VCD v%s\n", VERSION);
 
@@ -122,26 +125,53 @@ char *argv[];
     printf("\txxx is USB optional port in octal (default is %o)\n", VDATA);
   }
   else {
-    /* save a copy */
-    strncpy(dircopy, argv[1], 80);
+	/* bail out if an error occurs */
+	err = FALSE;
+    /* keep track of where we go */
+    dtrack[0] = NUL;
     
     d = argv[1];
     /* if rooted path start at /, otherwise relative path */
     if (*d == '/') {
       vcdroot();
+	  strcat(dtrack, "/");
       ++d;
     }
-    slash = index(d, "/");
-    while (slash != -1) {
+	/* if multiple directories are specified then
+	** loop through them.
+	*/
+    while (!err && (slash = index(d, "/")) != -1) {
+	  /* isolate just a single level */
       s = d;
       d += slash;
       *d++ = NUL;
-      vcd(s);
-      slash = index(d, "/");
+      if ((vcd(s) == 0)) {
+		strcat(dtrack, s);
+		strcat(dtrack, "/");
+	  } else
+		err = TRUE;
     }
-    if (strlen(d) > 0)
-      vcd(d);
-    
-    printf("USB:%s\n", dircopy);
+	
+	/* now change to the last (or possibly only) directory
+	** specified.
+	*/
+	s = d;
+    if (!err && (strlen(s) > 0)) {
+      if ((vcd(s) == 0)) {
+		strcat(dtrack, s);
+		strcat(dtrack, "/");
+	  } else
+		err = TRUE;
+	}
+	
+	/* check for errors */
+	if (err)
+      printf("Directory %s not found\n", s);
+  
+    /* report any directory changes that were successful */
+    if (strlen(dtrack) > 0)
+	  printf("Changes made: %s\n", dtrack);
+    else
+	  printf("No changes made\n");
   }
 }

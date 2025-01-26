@@ -819,7 +819,7 @@ char *dir;
   str_rdw(linebuff, '\r');
 
   if (strcmp(linebuff, PROMPT) != 0) {
-    printf("CD %s: %s\n", dir, linebuff);
+    /* command failed */
     rc = -1;
   }
   
