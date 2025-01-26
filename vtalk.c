@@ -33,7 +33,7 @@
 **  You can either add the appropriate #ifdef line below,
 **  or add the following switch to your compile line:
 **
-**    C -qHDOS=1 VTALK
+**    cc -qHDOS=1 vtalk
 **
 **  Also, our convention is to save all files with CP/M
 **  style line endings (CR-LF). The HDOS version of C/80
@@ -55,6 +55,8 @@
 **
 ** 27 October 2024 - added ability to read port number from
 ** configuration file. Updated to V4.1.
+**
+** 26 January 2025 - print NL on exit.
 **
 ********************************************************/
 #include "fprintf.h"
@@ -284,8 +286,9 @@ char *argv[];
 
   
   /* perform any console initialization */
-  if (copen() != -1) {
-  
+  if (copen() == -1)
+    printf("Unable to open console - 8250 UART not detected.\n");
+  else {
     done = FALSE;
     cr_pending = FALSE;
 
@@ -335,9 +338,10 @@ char *argv[];
           conout(c);
       }
     }
-    /* Ctrl-c has been hit. reset any console changes and exit */
+    /* Ctrl-c has been hit. print a new line, reset any console
+	** changes and exit
+	*/
+	conout('\n');
     cclose();
-  } else {
-    printf("Unable to open console - 8250 UART not detected.\n");
   }
 }

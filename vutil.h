@@ -7,12 +7,14 @@
 **      2 February 2022
 **      Glenn Roberts
 **
+**	4.2 (Beta) 26 Feb 2025
+**
 ********************************************************/
 #ifndef EXTERN
 #define EXTERN extern
 #endif
 
-#define	VERSION	"4.1"
+#define	VERSION	"4.2 (Beta)"
 
 /* Define either HDOS or CPM here to cause appropriate 
 ** routines to be compiled.  If none is defined CPM is 
