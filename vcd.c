@@ -155,8 +155,8 @@ char *argv[];
 	/* now change to the last (or possibly only) directory
 	** specified.
 	*/
-	s = d;
-    if (!err && (strlen(s) > 0)) {
+    if (!err && (strlen(d) > 0)) {
+      s = d;
       if ((vcd(s) == 0)) {
 		strcat(dtrack, s);
 		strcat(dtrack, "/");
