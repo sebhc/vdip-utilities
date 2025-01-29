@@ -77,6 +77,8 @@
 ** 27 October 2024 - added ability to read port number from
 ** configuration file. Fixed bugs in CP/M. Updated to V4.1.
 **
+** 28 January 2025 - bug fix in islegal() (allow blanks for CP/M)
+**
 ********************************************************/
 #include "fprintf.h"
 
@@ -382,7 +384,7 @@ char *device;
       ** set other fields to defaults.  In our directory
       ** structure we pad with NUL not SPACE so make
       ** that adjustment here. This is also where we
-			** mask out the 8th bit by ANDing with 0x7F.
+	  ** mask out the 8th bit by ANDing with 0x7F.
       */
       for (j=0; j<8; j++) {
         c = ourentry->cname[j] & 0x7F;
@@ -505,7 +507,7 @@ int p;
 {
 	int ok;
 	char *ck;
-	static char okcpm[] = "_$!%-@`^~#&{}'()";
+	static char okcpm[] = " _$!%-@`^~#&{}'()";
 	
 	ok = (isalpha(c) || isdigit(c)) ? TRUE : FALSE;
 #ifdef HDOS
