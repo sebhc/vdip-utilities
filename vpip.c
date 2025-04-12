@@ -79,6 +79,9 @@
 **
 ** 28 January 2025 - bug fix in islegal() (allow blanks for CP/M)
 **
+** 12 April 2025 - simplified version and port reporting to single line.
+** added "verbose" switch (-v) - default is "quiet"
+**
 ********************************************************/
 #include "fprintf.h"
 
@@ -218,6 +221,7 @@ char rwbuffer[BUFFSIZE];
 
 /* global switch settings */
 int f_list;   /* to list directory (no file copy) */
+int verbose;  /* if FALSE (default) don't print extra info */
 
 
 #ifdef HDOS
@@ -384,7 +388,7 @@ char *device;
       ** set other fields to defaults.  In our directory
       ** structure we pad with NUL not SPACE so make
       ** that adjustment here. This is also where we
-	  ** mask out the 8th bit by ANDing with 0x7F.
+      ** mask out the 8th bit by ANDing with 0x7F.
       */
       for (j=0; j<8; j++) {
         c = ourentry->cname[j] & 0x7F;
@@ -559,12 +563,15 @@ int bldudir()
 {
   int n;
   
-  printf("Building USB directory...  ");
+  if (verbose)
+    printf("Building USB directory...  ");
   /* pass 1 - populate the directory array */
   n = vdir1();
-  printf("%d entries\n", n);
+  if (verbose)
+    printf("%d entries\n", n);
   
-  printf("Standby - cataloging USB file details...\n");
+  if (verbose)
+    printf("Standby - cataloging USB file details...\n");
   /* pass 2 - look up details on each file */
   vdir2();
 }
@@ -1289,6 +1296,7 @@ char *argv[];
   
   /* default flag settings */
   f_list = FALSE;
+  verbose = FALSE;
 
   /* process right to left */
   for (i=argc; i>0; i--) {
@@ -1306,6 +1314,10 @@ char *argv[];
       case 'L':
         f_list = TRUE;
         break;
+      /* V = verbose mode */
+      case 'V':
+        verbose = TRUE;
+        break;
       default:
           printf("Invalid switch %c\n", *s);
         break;
@@ -1318,9 +1330,7 @@ main(argc,argv)
 int argc;
 char *argv[];
 {
-  int l;
-
-  printf("VPIP v%s\n", VERSION);
+  int l, userport;
 
   /* default port values */
   p_data = VDATA;
@@ -1333,19 +1343,23 @@ char *argv[];
 	
 	/* check if user has a file specifying the port. For
 	** HDOS we can provide the location of this program executable
-	** but for CP/M we can only suggest looking on A:
+	** but for CP/M we can only suggest looking on A:. 
+  ** userport==TRUE if port was set by user, otherwise use
+  ** default port.
 	*/
 #ifdef HDOS
-	chkport("SY0:");
+	userport = chkport("SY0:");
 #else
-	chkport("A:");
+	userport = chkport("A:");
 #endif
 
   /* process any switches */
   dosw(argc, argv);
 
-  printf("Using port: [%o]\n", p_data);
-
+  if (verbose)
+    printf("VPIP v%s, using %s port: [%o]\n", VERSION,
+      (userport ? "user-specified" : "default"), p_data);
+  
   if (argc < 2) {
     /* interactive mode */
     do {

@@ -43,6 +43,8 @@
 ** 27 October 2024 - added ability to read port number from
 ** configuration file. Updated to V4.1.
 **
+** 12 April 2025 - simplified version and port reporting to single line.
+**
 ********************************************************/
 #include "fprintf.h"
 
@@ -239,8 +241,10 @@ char *argv[];
 main(argc,argv)
 int argc;
 char *argv[];
-{ 
-  printf("VGET v%s\n", VERSION);
+{
+  int userport;
+  
+  printf("VGET v%s, ", VERSION);
 
   /* Set default values */
   p_data = VDATA;
@@ -256,15 +260,15 @@ char *argv[];
 	** but for CP/M we can only suggest looking on A:
 	*/
 #ifdef HDOS
-	chkport("SY0:");
+	userport = chkport("SY0:");
 #else
-	chkport("A:");
+	userport = chkport("A:");
 #endif
 
   /* process any switches and set defaults */
   dosw(argc, argv);
 
-  printf("Using port: [%o]\n", p_data);
+  printf("using %s port: [%o]\n", (userport ? "user-specified" : "default"), p_data);
   
   /* parse source and destination file specs */
   dofiles(argc, argv);

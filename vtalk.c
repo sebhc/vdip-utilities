@@ -58,6 +58,8 @@
 **
 ** 26 January 2025 - print NL on exit.
 **
+** 12 April 2025 - simplified version and port reporting to single line.
+**
 ********************************************************/
 #include "fprintf.h"
 
@@ -259,9 +261,9 @@ main(argc,argv)
 int argc;
 char *argv[];
 {
-  static int c, done, cr_pending;
+  static int c, done, cr_pending, userport;
 
-  printf("VTALK v%s\n", VERSION);
+  printf("VTALK v%s, ", VERSION);
 
   /* default port values */
   p_data = VDATA;
@@ -272,17 +274,17 @@ char *argv[];
 	** but for CP/M we can only suggest looking on A:
 	*/
 #ifdef HDOS
-	chkport("SY0:");
+	userport = chkport("SY0:");
 #else
-	chkport("A:");
+	userport = chkport("A:");
 #endif
 
   /* process any switches */
   dosw(argc, argv);
 
   /* print welcome */
-  printf("Using port: [%o]\n\n", p_data);
-  printf("Enter Vinculum commands, Ctrl-C to exit\n\n");
+  printf("using %s port: [%o]\n", (userport ? "user-specified" : "default"), p_data);
+  printf("\nEnter Vinculum commands, Ctrl-C to exit\n\n");
 
   
   /* perform any console initialization */

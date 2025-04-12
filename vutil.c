@@ -772,6 +772,10 @@ unsigned utime;
 **
 ** If these fail, do nothing, otherwise set the globals
 ** p_data and p_stat are set using the specified port.
+**
+** update: gfr 12 April 2025
+** Returns TRUE if VPORT file successfully found and used, otherwise
+** returns FALSE.
 */
 int chkport(s)
 char *s;
@@ -811,10 +815,11 @@ char *s;
 	if (fok) {
 		/* file found and opened - read the port number */
 		fscanf(pch, "%o\n", &pval);
-		printf("User-specified port: [%03o] in file %s\n", pval, pfname);
+/*		printf("User-specified port: [%03o] in file %s\n", pval, pfname); */
 		p_data = pval;
 		p_stat = p_data + 1;
 
 		fclose(pch);
 	}
+  return fok;
 }
