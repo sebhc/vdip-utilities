@@ -488,32 +488,6 @@ int init, t;
   return rc;
 }
 
-/********************************************************
-**
-** readdate
-**
-** attempts to read the date and time information from the
-** Epson time clock chip, filling out the fields in the
-** supplied data structure.
-**
-** Returns TRUE if the month field is between 1 and 12,
-** indicating the presence of a clock chip.
-**
-********************************************************/
-int readdate(d)
-struct datetime *d;
-{
-  /* read from registers - all are 4 bits (mask to lower 4) */
-  d->seconds = (inp(CLOCK+S1)  & 0x0F) + 10 * (inp(CLOCK+S10)  & 0x0F);
-  d->minutes = (inp(CLOCK+MI1) & 0x0F) + 10 * (inp(CLOCK+MI10) & 0x0F);
-  d->hours   = (inp(CLOCK+H1)  & 0x0F) + 10 * (inp(CLOCK+H10)  & 0x0F);
-  d->day     = (inp(CLOCK+D1)  & 0x0F) + 10 * (inp(CLOCK+D10)  & 0x0F);
-  d->month   = (inp(CLOCK+MO1) & 0x0F) + 10 * (inp(CLOCK+MO10) & 0x0F);
-  d->year    = (inp(CLOCK+Y1)  & 0x0F) + 10 * (inp(CLOCK+Y10)  & 0x0F);
-  d->dow     = (inp(CLOCK+W)   & 0x0F);
-  
-  return ((d->month >= 1) && (d->month <= 12));
-}
 
 /********************************************************
 **
@@ -528,30 +502,40 @@ struct datetime *d;
 ** If show is TRUE then the date is also displayed on the
 ** console.
 **
-** CP/M3 and HDOS both have time/date capability, however
-** the interfaces are completely different, hence this
-** routine chooses the appropriate code to run based on
-** the OS detected at startup. CP/M 2.2 does not have
-** built in time/date support. There are third party
-** enhancements that add that but they are not currently
-** supported in this code.
+** CP/M 3 has an OS-supported time function accessed via
+** a call to BDOS function 105.
+**
+** HDOS stores time and date information in a well-known
+** location. The date is set at boot time based on user input.
+** If a real-time clock is present it can be used to set
+** date and time and either a CK: driver (HDOS 2) or CLOCK
+** task (HDOS 3) will then maintain the time field.
+**
+** CP/M 2.2.0x also maintains time and date fields in a
+** well-known location. If a real-time clock is present
+** it will set the time/date and time will be maintained
+** by the BIOS, Otherwise date will default to 0/0/0 and
+** time represents time since boot. There are third-party
+** enhancements to CP/M that manage time/date but those
+** have not been tested with this code.
 **
 ********************************************************/
 int settd(show)
 int show;
 {
   int h, m, s;
-  int dd, mm, yyyy;
-  int mydate[3];  /* day, month, year */
+  char *c;
+  int dd, mm, yyyy, idate;
   unsigned utime, udate;
-  /* date/time data structure for Epson chip */
-  struct datetime epsondt;
-  /* date/time data structure expected by BDOS 105 */
-  struct datime dt;
   static char *month[] = {
     "???", "Jan", "Feb", "Mar", "Apr",  "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
   };
+  
+  /* CP/M 3 specific fields */
+  int mydate[3];  /* day, month, year */
+  /* date/time data structure expected by BDOS 105 */
+  struct datime dt;
   
   /* Since CP/M 3 and MP/M have OS-level date/time support
   ** we use the associated BDOS call here.
@@ -570,17 +554,48 @@ int show;
     mm = mydate[1];
     yyyy = mydate[2];
 
-  } else if (readdate(&epsondt)) {
-    /* If we detect a clock chip use those results */
-    h = epsondt.hours;
-    m = epsondt.minutes;
-    s = epsondt.seconds;
-    dd = epsondt.day;
-    mm = epsondt.month;
-    yyyy = 2000 + epsondt.year;
+  }
+  else if (os==OSHDOS) {
+    /* for HDOS 2 and HDOS 3 use well known location
+    ** HH MM SS are three successive bytes stored in
+    ** BCD format. Date is stored as 16-bit value
+    ** as shown below.
+    ** NOTE: this code assumes no sign extension
+    ** converting char to int (switch -x in C/80)
+    */
+    c = stime;
     
-  } else {
-    /* use zero to indicate no clock */
+    h = btod(*c++);
+    m = btod(*c++);
+    s = btod(*c);
+
+    idate = *cdate;
+    
+    /* HDOS internal date is: yyyyyyymmmmddddd */
+    dd = idate & 0x1F;
+    mm = (idate >> 5) & 0x0F;
+    yyyy = (idate >> 9) + 2000;
+  }
+  else if ((os==OSCPM) && (osver<0x30)) {
+    /* CP/M 2.2.0x */
+    
+    /* point to time/date values in RAM stored
+    ** in 6 successive bytes: SS MM HH DD MM YY
+    ** NOTE: this code assumes no sign extension
+    ** converting char to int (switch -x in C/80)
+    */
+    c = *ckptr - 11;
+    
+    s = *c++;
+    m = *c++;
+    h = *c++;
+    
+    dd = *c++;
+    mm = *c++;
+    yyyy = *c + 2000;
+  }
+  else {
+    /* use all zeros for default */
     h = m = s = 0;
     dd = mm = yyyy = 0;
     
@@ -643,52 +658,6 @@ int date[];
   date[2] = yyyy;
 }
 
-/********************************************************
-**
-** tseconds
-**
-** returns the number of seconds since midnight. Uses
-** os and osver globals to determine the OS-specific
-** technique to use, or direct access to Epson clock chip,
-** if no OS-specific support.  If time is not supported 
-** returns 0.
-**
-** since there are 86,400 seconds in a day the value
-** must be returned as a LONG.
-**
-********************************************************/
-long tseconds()
-{
-  int h, m, s;
-  /* date/time data structure for Epson chip */
-  struct datetime epsondt;
-  /* date/time data structure expected by BDOS 105 */
-  struct datime dt; 
-
-  /* Since CP/M 3 and MP/M have OS-level date/time support
-  ** we use the associated BDOS call here.
-  */
-  if ((os==OSMPM) || ((os==OSCPM) && (osver>=0x30))) {
-    s = btod(bdoshl(105, &dt));
-    m = btod(dt.minute);
-    h = btod(dt.hour);
-    
-  }
-  else if (readdate(&epsondt)) {
-    /* If we detect a clock chip use those results */
-    s = epsondt.seconds;
-    m = epsondt.minutes;
-    h = epsondt.hours;
-    
-  }
-  else {
-    /* no clock */
-    h = 0;
-    m = 0;
-    s = 0;
-  }
-  return 3600L * h + 60L * m + s;
-}
 
 /********************************************************
 **

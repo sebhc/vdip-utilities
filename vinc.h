@@ -7,6 +7,9 @@
 **      31 January 2022
 **      Glenn Roberts
 **
+**	4.3 (Beta) 4 Sep 2025
+**		changed default port to 261-1
+**
 ********************************************************/
 #ifndef EXTERN
 #define EXTERN extern
@@ -22,8 +25,8 @@ EXTERN int p_stat;
 #define VRXF    010             /* RXF# when hi data avail  */
 
 /* FTDI VDIP default ports */
-#define VDATA   0331
-#define VSTAT   0332
+#define VDATA   0261
+#define VSTAT   0262
 
 /* standard VDIP command prompt */
 #define PROMPT  "D:\\>"

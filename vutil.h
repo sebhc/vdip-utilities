@@ -8,13 +8,15 @@
 **      Glenn Roberts
 **
 **	4.2 (Beta) 26 Feb 2025
+**	4.3 (Beta) 4 Sep 2025
+**		remove Epson clock dependencies
 **
 ********************************************************/
 #ifndef EXTERN
 #define EXTERN extern
 #endif
 
-#define	VERSION	"4.2 (Beta)"
+#define	VERSION	"4.3 (Beta)"
 
 /* Define either HDOS or CPM here to cause appropriate 
 ** routines to be compiled.  If none is defined CPM is 
@@ -39,36 +41,23 @@ struct datime {
   char minute;
 };
 
-/* Clock port and register offsets (for versions that read
-** the time directly from the clock vs. an OS call
-*/
-#define CLOCK   0240    /* Clock Base Port      */
-#define S1      0       /* Seconds register     */
-#define S10     1       /* Tens of Seconds      */
-#define MI1     2       /* Minutes register */
-#define MI10    3       /* Tens of Minutes      */
-#define H1      4       /* Hours register       */
-#define H10     5       /* Tens of Hours        */
-#define D1      6       /* Days register        */
-#define D10     7       /* Tens of Days         */
-#define MO1     8       /* Months register      */
-#define MO10    9       /* Tens of Months       */
-#define Y1      10      /* Years register       */
-#define Y10     11      /* Tens of Years        */
-#define W       12      /* Day of week reg.     */
+/* key date/time locations in HDOS */
+#define S_DATE  0x20BF
+#define S_DATC  0x20C8
+#define S_TIME  0x20CA
 
-/* Data structure to hold results from Epson real-time
-** clock query
+/* sdate[9] = ASCII date representation
+** cdate    = coded date (Y2K format)
+** stime[3] = BCD time representation
 */
-struct datetime {
-  int day;
-  int month;
-  int year;
-  int hours;
-  int minutes;
-  int seconds;
-  int dow;
-};
+static char *sdate = S_DATE;
+static int *cdate  = S_DATC;
+static char *stime = S_TIME;
+
+/* key time/date locations in CP/M */
+
+/* pointer to 2ms ISR in low RAM */
+static char **ckptr = 0x009;
 
 /* Operating System name and version used to activate
 ** appropriate OS-specific function calls
@@ -158,9 +147,7 @@ int isprint();
 int modays();
 int is_leap();
 int timer();
-int readdate();
 int settd();
 int dodate();
-long tseconds();
 int prndate();
 int prntime();
