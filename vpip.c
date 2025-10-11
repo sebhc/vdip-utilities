@@ -321,9 +321,18 @@ char *device;
             /* now store it in our directory list */
             direntry[nentries++] = entry;
           }
-          else
-            /* deleted entry, skip to next */
-            src += sizeof(hdosentry);
+          else {
+            /* directory entry starts with non-printable character */
+            if ((*src & 0xFF) == 0xFE)
+              /* end of directory! */
+              done = TRUE;
+            else if ((*src & 0xFF) == 0xFF)
+              /* deleted entry, skip to next */
+              src += sizeof(hdosentry);
+            else
+              /* junk found - bail out! */
+              done = TRUE;
+          }
         }
       }
     } while (!done);
